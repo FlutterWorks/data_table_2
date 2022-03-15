@@ -88,7 +88,10 @@ class DessertDataSource extends DataTableSource {
     desserts = [];
   }
 
-  DessertDataSource(this.context, [sortedByCalories = false]) {
+  DessertDataSource(this.context,
+      [sortedByCalories = false,
+      this.hasRowTaps = false,
+      this.hasRowHeightOverrides = false]) {
     desserts = _desserts;
     if (sortedByCalories) {
       sort((d) => d.calories, true);
@@ -97,6 +100,8 @@ class DessertDataSource extends DataTableSource {
 
   final BuildContext context;
   late List<Dessert> desserts;
+  late bool hasRowTaps;
+  late bool hasRowHeightOverrides;
 
   void sort<T>(Comparable<T> Function(Dessert d) getField, bool ascending) {
     desserts.sort((a, b) {
@@ -133,17 +138,41 @@ class DessertDataSource extends DataTableSource {
     assert(index >= 0);
     if (index >= desserts.length) throw 'index > _desserts.length';
     final dessert = desserts[index];
-    return DataRow.byIndex(
+    return DataRow2.byIndex(
       index: index,
       selected: dessert.selected,
-      onSelectChanged: (value) {
-        if (dessert.selected != value) {
-          _selectedCount += value! ? 1 : -1;
-          assert(_selectedCount >= 0);
-          dessert.selected = value;
-          notifyListeners();
-        }
-      },
+      onSelectChanged: hasRowTaps
+          ? null
+          : (value) {
+              if (dessert.selected != value) {
+                _selectedCount += value! ? 1 : -1;
+                assert(_selectedCount >= 0);
+                dessert.selected = value;
+                notifyListeners();
+              }
+            },
+      onTap: hasRowTaps
+          ? () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                duration: Duration(seconds: 1),
+                content: Text('Tapped on ${dessert.name}'),
+              ))
+          : null,
+      onDoubleTap: hasRowTaps
+          ? () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                duration: Duration(seconds: 1),
+                backgroundColor: Theme.of(context).focusColor,
+                content: Text('Double Tapped on ${dessert.name}'),
+              ))
+          : null,
+      onSecondaryTap: hasRowTaps
+          ? () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                duration: Duration(seconds: 1),
+                backgroundColor: Theme.of(context).errorColor,
+                content: Text('Right clicked on ${dessert.name}'),
+              ))
+          : null,
+      specificRowHeight:
+          this.hasRowHeightOverrides && dessert.fat >= 25 ? 100 : null,
       cells: [
         DataCell(Text(dessert.name)),
         DataCell(Text('${dessert.calories}')),
@@ -306,6 +335,8 @@ class DesertsFakeWebService {
       case 'iron':
         return (Dessert d1, Dessert d2) => coef * (d1.iron - d2.iron);
     }
+
+    return null;
   }
 
   Future<DesertsFakeWebServiceResponse> getData(int startingAt, int count,

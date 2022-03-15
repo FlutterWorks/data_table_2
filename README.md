@@ -1,3 +1,5 @@
+[![Pub Version](https://img.shields.io/pub/v/data_table_2?label=pub.dev&labelColor=333940&logo=flutter)](https://pub.dev/packages/data_table_2) [![GitHub](https://img.shields.io/github/license/maxim-saplin/data_table_2?color=%23007A88&labelColor=333940)](https://github.com/maxim-saplin/data_table_2/blob/main/LICENSE) [![Tests](https://github.com/maxim-saplin/data_table_2/workflows/Dev%20Build/badge.svg)](https://github.com/maxim-saplin/data_table_2/actions) [![Codecov](https://img.shields.io/codecov/c/github/maxim-saplin/data_table_2/nndb?labelColor=333940&logo=codecov&logoColor=white)](https://codecov.io/gh/maxim-saplin/data_table_2)
+
 In-place substitute for Flutter's stock **DataTable** and **PaginatedDataTable** widgets with fixed header/sticky top row and other useful features missing in the originals. **DataTable2** and **PaginatedDataTable2** widgets are based on the sources of Flutter's originals, mimic the API and provide seamless integration.
 
 If you've been using (or considered using) standard Flutter's widgets for displaying tables or data grids and missed the sticky headers (or vertical borders, 'No rows' placeholder, straightforward async data source API etc.) - you've come to the right place. No need to learn yet another API of a new control, just stick to well described DataTable and PaginatedDataTable.
@@ -6,22 +8,23 @@ If you've been using (or considered using) standard Flutter's widgets for displa
 
 [<img width="866" alt="image" src="https://user-images.githubusercontent.com/7947027/115952188-48c4e600-a4ed-11eb-9ff9-e5b4deaf9580.png">](https://maxim-saplin.github.io/data_table_2/)
 
-\- please check the [example folder](https://github.com/maxim-saplin/data_table_2/tree/main/example) which demos  various features of the widgets as well as contains few screens with original DataTable and PgaintedDataTable widgets for a reference. There's also a [DataGrid Sample](https://maxim-saplin.github.io/flutter_web_spa_sample/canvaskit/) in separate repo which is based on `DataTable2`.
+\- please check the [example folder](https://github.com/maxim-saplin/data_table_2/tree/main/example) which demos  various features of the widgets as well as contains few screens with original DataTable and PaginatedDataTable widgets for a reference. There's also a [DataGrid Sample](https://maxim-saplin.github.io/flutter_web_spa_sample/canvaskit/) in separate repo which is based on `DataTable2`.
 
 ## Extra Features
-- Sticky headers and paginator (when using `PabinatedDataTable2`)
+- Sticky headers and paginator (when using `PaginatedDataTable2`)
 - Vertically scrollable main area (with data rows)
   - `autoRowsToHeight` property on PaginatedDataTable2 allows to auto calculate page size depending on how much rows fit the height and makes vertical scrolling unnecessary
 - All columns are fixed width, table automatically stretches horizontally, individual column's width is determined as **(Width)/(Number of Columns)**
   - Should you want to adjust sizes of columns, you can replace `DataColumn` definitions with `DataColumn2` (which is a descendant of DataColumn). The class provides `size` property which can be set to one of 3 relative sizes (S, M and L)
   - Width ratios between Small and Medium, Large and Medium columns are defined by `smRatio` and `lmRatio` params
   - You can limit the minimal width of the control and scroll it horizontally if the viewport is narrower (by setting `minWidth` property) which is useful in portrait orientations with multiple columns not fitting the screen
-  - You can add bottom margin (by setting `bottomMargin` property) to allow slight overscroll
+  - You can add bottom margin (by setting `bottomMargin` property) to allow slight over-scroll
   - Fixed width columns are faster than default implementation of DataTable which does 2 passes to determine contents size and justify column widths
 - Data rows are wrapped in `Flexible` and `SingleScrollView` widgets to allow widget to fill parent container and be scrollable
   - Vertical scroller is exposed via table's `scrollController` property. See example 'DataTable2 - Scroll-up' which shows 'up' button when scrolling down and allows to jump to the top of the table
   - `PaginatedDataTable2.fit` property controls whether the paginator sticks to the bottom and leaves a gap to data rows above
 - There's `DataRow2` alternative to stock `DataRow` which provides row level tap events (including right clicks)
+  - `DataRow2.specificRowHeight` allows overriding default height for any row
 - `empty` property which allows defining a placeholder widget to be displayed when data source is empty
 - `border` allows drawing inner and outer vertical and horizontal borders (e.g. outlining individual cells) - stock widgets only allow drawing horizontal row splitters
 - `PaginatorController` allows to externally control `PaginatedDataTable2` state (e.g. switch pages, change page size etc.)
