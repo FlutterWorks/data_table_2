@@ -9,6 +9,8 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+bool dataTableShowLogs = true;
+
 /// Relative size of a column determines the share of total table width allocated
 /// to each individual column. When determining column widths ratios between S, M and L
 /// columns are kept (i.e. Large columns are set to 1.2x width of Medium ones)
@@ -24,16 +26,21 @@ class DataColumn2 extends DataColumn {
   ///
   /// The [label] argument must not be null.
   const DataColumn2(
-      {required Widget label,
-      String? tooltip,
-      bool numeric = false,
-      Function(int, bool)? onSort,
-      this.size = ColumnSize.M})
-      : super(label: label, tooltip: tooltip, numeric: numeric, onSort: onSort);
+      {required super.label,
+      super.tooltip,
+      super.numeric = false,
+      super.onSort,
+      this.size = ColumnSize.M,
+      this.fixedWidth});
 
   /// Column sizes are determined based on available width by distributing it
   /// to individual columns accounting for their relative sizes (see [ColumnSize])
   final ColumnSize size;
+
+  /// Defines absolute width of the column in pixel (as opposed to relative size used by default).
+  /// Warning, if the width happens to be larger than available total width other
+  /// columns can be clipped
+  final double? fixedWidth;
 }
 
 /// Extension of standard [DataRow], adds row level tap events. Also there're
@@ -47,42 +54,31 @@ class DataRow2 extends DataRow {
   ///
   /// The [cells] argument must not be null.
   const DataRow2(
-      {LocalKey? key,
-      bool selected = false,
-      ValueChanged<bool?>? onSelectChanged,
-      MaterialStateProperty<Color?>? color,
-      required List<DataCell> cells,
+      {super.key,
+      super.selected = false,
+      super.onSelectChanged,
+      super.color,
+      required super.cells,
       this.specificRowHeight,
       this.onTap,
       this.onDoubleTap,
-      this.onLongPress,
+      super.onLongPress,
       this.onSecondaryTap,
-      this.onSecondaryTapDown})
-      : super(
-            key: key,
-            selected: selected,
-            onSelectChanged: onSelectChanged,
-            color: color,
-            cells: cells);
+      this.onSecondaryTapDown});
 
   DataRow2.byIndex(
       {int? index,
-      bool selected = false,
-      ValueChanged<bool?>? onSelectChanged,
-      MaterialStateProperty<Color?>? color,
-      required List<DataCell> cells,
+      super.selected = false,
+      super.onSelectChanged,
+      super.color,
+      required super.cells,
       this.specificRowHeight,
       this.onTap,
       this.onDoubleTap,
-      this.onLongPress,
+      super.onLongPress,
       this.onSecondaryTap,
       this.onSecondaryTapDown})
-      : super.byIndex(
-            index: index,
-            selected: selected,
-            onSelectChanged: onSelectChanged,
-            color: color,
-            cells: cells);
+      : super.byIndex(index: index);
 
   /// Specific row height, which will be used only if provided.
   /// If not provided, dataRowHeight will be applied.
@@ -100,8 +96,8 @@ class DataRow2 extends DataRow {
   /// Row double tap handler, won't be called if tapped cell has any tap event handlers
   final GestureTapCallback? onDoubleTap;
 
-  /// Row long press handler, won't be called if tapped cell has any tap event handlers
-  final GestureLongPressCallback? onLongPress;
+  // /// Row long press handler, won't be called if tapped cell has any tap event handlers
+  // final GestureLongPressCallback? onLongPress;
 }
 
 /// In-place replacement of standard [DataTable] widget, mimics it API.
@@ -112,52 +108,47 @@ class DataRow2 extends DataRow {
 /// row-level tap event handlers.
 class DataTable2 extends DataTable {
   DataTable2({
-    Key? key,
-    required List<DataColumn> columns,
-    int? sortColumnIndex,
-    bool sortAscending = true,
-    ValueSetter<bool?>? onSelectAll,
-    Decoration? decoration,
-    MaterialStateProperty<Color?>? dataRowColor,
-    double? dataRowHeight,
-    TextStyle? dataTextStyle,
-    MaterialStateProperty<Color?>? headingRowColor,
-    double? headingRowHeight,
-    TextStyle? headingTextStyle,
-    double? horizontalMargin,
-    double? checkboxHorizontalMargin,
+    super.key,
+    required super.columns,
+    super.sortColumnIndex,
+    super.sortAscending = true,
+    super.onSelectAll,
+    super.decoration,
+    super.dataRowColor,
+    super.dataRowHeight,
+    super.dataTextStyle,
+    super.headingRowColor,
+    this.fixedColumnsColor,
+    this.fixedCornerColor,
+    super.headingRowHeight,
+    super.headingTextStyle,
+    super.horizontalMargin,
+    super.checkboxHorizontalMargin,
     this.bottomMargin,
-    double? columnSpacing,
-    bool showCheckboxColumn = true,
-    bool showBottomBorder = false,
-    double? dividerThickness,
+    super.columnSpacing,
+    super.showCheckboxColumn = true,
+    super.showBottomBorder = false,
+    super.dividerThickness,
     this.minWidth,
     this.scrollController,
     this.empty,
     this.border,
     this.smRatio = 0.67,
+    this.fixedTopRows = 1,
+    this.fixedLeftColumns = 0,
     this.lmRatio = 1.2,
-    required List<DataRow> rows,
-  }) : super(
-            key: key,
-            columns: columns,
-            sortColumnIndex: sortColumnIndex,
-            sortAscending: sortAscending,
-            onSelectAll: onSelectAll,
-            decoration: decoration,
-            dataRowColor: dataRowColor,
-            dataRowHeight: dataRowHeight,
-            dataTextStyle: dataTextStyle,
-            headingRowColor: headingRowColor,
-            headingRowHeight: headingRowHeight,
-            headingTextStyle: headingTextStyle,
-            horizontalMargin: horizontalMargin,
-            checkboxHorizontalMargin: checkboxHorizontalMargin,
-            columnSpacing: columnSpacing,
-            showCheckboxColumn: showCheckboxColumn,
-            showBottomBorder: showBottomBorder,
-            dividerThickness: dividerThickness,
-            rows: rows);
+    this.sortArrowAnimationDuration = const Duration(milliseconds: 150),
+    this.sortArrowIcon = Icons.arrow_upward,
+    required super.rows,
+  })  : assert(fixedLeftColumns >= 0),
+        assert(fixedTopRows >= 0) {
+    // // Fix for #111, syncrhonize scroll position for left fixed column with core
+    // // Works fine if there's scrollCongtroller provided externally, allows to avoid jumping
+    // _leftColumnVerticalContoller = ScrollController(
+    //     initialScrollOffset: _coreVerticalController.positions.isNotEmpty
+    //         ? _coreVerticalController.offset
+    //         : 0.0);
+  }
 
   static final LocalKey _headingRowKey = UniqueKey();
 
@@ -169,8 +160,9 @@ class DataTable2 extends DataTable {
       onSelectAll!(effectiveChecked);
     } else {
       for (final DataRow row in rows) {
-        if (row.onSelectChanged != null && row.selected != effectiveChecked)
+        if (row.onSelectChanged != null && row.selected != effectiveChecked) {
           row.onSelectChanged!(effectiveChecked);
+        }
       }
     }
   }
@@ -191,8 +183,14 @@ class DataTable2 extends DataTable {
   /// The default divider thickness.
   static const double _dividerThickness = 1.0;
 
-  static const Duration _sortArrowAnimationDuration =
-      Duration(milliseconds: 150);
+  /// When changing sort direction an arrow icon in the header is rotated clockwise.
+  /// The value defines the duration of the rotation animation.
+  /// If not set, the default animation duration is 150 ms.
+  final Duration sortArrowAnimationDuration;
+
+  /// Icon to be displayed when sorting is applied to a column.
+  /// If not set, the default icon is [Icons.arrow_upward]
+  final IconData sortArrowIcon;
 
   /// If set, the table will stop shrinking below the threshold and provide
   /// horizontal scrolling. Useful for the cases with narrow screens (e.g. portrait phone orientation)
@@ -204,20 +202,17 @@ class DataTable2 extends DataTable {
   /// have the ability to slightly scroll up the bototm row to avoid the obstruction)
   final double? bottomMargin;
 
-  /// Exposes scroll controller of the SingleChildScrollView that makes data rows horizontally scrollable
+  /// Exposes scroll controller of the SingleChildScrollView that makes data rows vertically scrollable
   final ScrollController? scrollController;
-
-  // https://github.com/maxim-saplin/data_table_2/issues/42
-  final ScrollController _horizontalController = ScrollController();
 
   /// Placeholder widget which is displayed whenever the data rows are empty.
   /// The widget will be displayed below column
   final Widget? empty;
 
   /// Set vertical and horizontal borders between cells, as well as outside borders around table.
-  /// NOTE: setting this field will disable standard horizontal dividers which are controlled by
-  /// themes and [dividerThickness] property
-  // TODO: Add test
+  @override
+  // keep field in order to keep doc
+  // ignore: overridden_fields
   final TableBorder? border;
 
   /// Determines ratio of Small column's width to Medium column's width.
@@ -228,29 +223,54 @@ class DataTable2 extends DataTable {
   /// I.e. 2.0 means that Large column is twice wider than Medium column.
   final double lmRatio;
 
-  Widget _buildCheckbox({
-    required BuildContext context,
-    required bool? checked,
-    required VoidCallback? onRowTap,
-    required ValueChanged<bool?>? onCheckboxChanged,
-    required MaterialStateProperty<Color?>? overlayColor,
-    required bool tristate,
-  }) {
+  /// The number of sticky rows fixed at the top of the table.
+  /// The heading row is counted/included.
+  /// By defult the value is 1 which means header row is fixed.
+  /// Set to 0 in order to unstick the header,
+  /// set to >1 in order to fix data rows
+  /// (i.e. in order to fix both header and the first data row use value of 2)
+  final int fixedTopRows;
+
+  /// Number of sticky columns fixed at the left side of the table.
+  /// Check box column (if enabled) is also counted
+  final int fixedLeftColumns;
+
+  /// Backgound color of the sticky columns fixed via [fixedLeftColumns].
+  /// Note: unlike data rows which can change their colors depending on material state (e.g. selected, hovered)
+  /// this color is static and doesn't repond to state change
+  /// Note: to change background color of fixed data rows use [DataTable2.headingRowColor]
+  final Color? fixedColumnsColor;
+
+  /// Backgound color of the top left corner which is fixed whenere both [fixedTopRows]
+  /// and [fixedLeftColumns] are greater than 0
+  /// Note: unlike data rows which can change their colors depending on material state (e.g. selected, hovered)
+  /// this color is static and doesn't repond to state change
+  /// Note: to change background color of fixed data rows use [DataTable2.headingRowColor]
+  final Color? fixedCornerColor;
+
+  Widget _buildCheckbox(
+      {required BuildContext context,
+      required bool? checked,
+      required VoidCallback? onRowTap,
+      required ValueChanged<bool?>? onCheckboxChanged,
+      required MaterialStateProperty<Color?>? overlayColor,
+      required bool tristate,
+      required double rowHeight}) {
     final ThemeData themeData = Theme.of(context);
     final double effectiveHorizontalMargin = horizontalMargin ??
         themeData.dataTableTheme.horizontalMargin ??
         _horizontalMargin;
+
     Widget contents = Semantics(
       container: true,
-      child: Padding(
+      child: Container(
+        height: rowHeight,
         padding: EdgeInsetsDirectional.only(
           start: checkboxHorizontalMargin ?? effectiveHorizontalMargin,
           end: (checkboxHorizontalMargin ?? effectiveHorizontalMargin) / 2.0,
         ),
         child: Center(
           child: Checkbox(
-            activeColor: themeData.colorScheme.primary,
-            checkColor: themeData.colorScheme.onPrimary,
             value: checked,
             onChanged: onCheckboxChanged,
             tristate: tristate,
@@ -261,27 +281,25 @@ class DataTable2 extends DataTable {
     if (onRowTap != null) {
       contents = TableRowInkWell(
         onTap: onRowTap,
-        child: contents,
         overlayColor: overlayColor,
+        child: contents,
       );
     }
-    return TableCell(
-      verticalAlignment: TableCellVerticalAlignment.fill,
-      child: contents,
-    );
+
+    return contents;
   }
 
-  Widget _buildHeadingCell({
-    required BuildContext context,
-    required EdgeInsetsGeometry padding,
-    required Widget label,
-    required String? tooltip,
-    required bool numeric,
-    required VoidCallback? onSort,
-    required bool sorted,
-    required bool ascending,
-    required MaterialStateProperty<Color?>? overlayColor,
-  }) {
+  Widget _buildHeadingCell(
+      {required BuildContext context,
+      required EdgeInsetsGeometry padding,
+      required Widget label,
+      required String? tooltip,
+      required bool numeric,
+      required VoidCallback? onSort,
+      required bool sorted,
+      required bool ascending,
+      required double effectiveHeadingRowHeight,
+      required MaterialStateProperty<Color?>? overlayColor}) {
     final ThemeData themeData = Theme.of(context);
     label = Row(
       textDirection: numeric ? TextDirection.rtl : null,
@@ -291,7 +309,8 @@ class DataTable2 extends DataTable {
           _SortArrow(
             visible: sorted,
             up: sorted ? ascending : null,
-            duration: _sortArrowAnimationDuration,
+            duration: sortArrowAnimationDuration,
+            sortArrowIcon: sortArrowIcon,
           ),
           const SizedBox(width: _sortArrowPadding),
         ],
@@ -301,9 +320,7 @@ class DataTable2 extends DataTable {
     final TextStyle effectiveHeadingTextStyle = headingTextStyle ??
         themeData.dataTableTheme.headingTextStyle ??
         themeData.textTheme.subtitle2!;
-    final double effectiveHeadingRowHeight = headingRowHeight ??
-        themeData.dataTableTheme.headingRowHeight ??
-        _headingRowHeight;
+
     label = Container(
       padding: padding,
       height: effectiveHeadingRowHeight,
@@ -312,7 +329,7 @@ class DataTable2 extends DataTable {
       child: AnimatedDefaultTextStyle(
         style: effectiveHeadingTextStyle,
         softWrap: false,
-        duration: _sortArrowAnimationDuration,
+        duration: sortArrowAnimationDuration,
         child: label,
       ),
     );
@@ -331,27 +348,27 @@ class DataTable2 extends DataTable {
     return label;
   }
 
-  Widget _buildDataCell({
-    required BuildContext context,
-    required EdgeInsetsGeometry padding,
-    required double? specificRowHeight,
-    required Widget label,
-    required bool numeric,
-    required bool placeholder,
-    required bool showEditIcon,
-    required GestureTapCallback? onTap,
-    required GestureTapCallback? onDoubleTap,
-    required GestureLongPressCallback? onLongPress,
-    required GestureTapDownCallback? onTapDown,
-    required GestureTapCancelCallback? onTapCancel,
-    required GestureTapCallback? onRowTap,
-    required GestureTapCallback? onRowDoubleTap,
-    required GestureLongPressCallback? onRowLongPress,
-    required GestureTapCallback? onRowSecondaryTap,
-    required GestureTapDownCallback? onRowSecondaryTapDown,
-    required VoidCallback onSelectChanged,
-    required MaterialStateProperty<Color?>? overlayColor,
-  }) {
+  Widget _buildDataCell(
+      {required BuildContext context,
+      required EdgeInsetsGeometry padding,
+      required double? specificRowHeight,
+      required Widget label,
+      required bool numeric,
+      required bool placeholder,
+      required bool showEditIcon,
+      required double defaultDataRowHeight,
+      required GestureTapCallback? onTap,
+      required GestureTapCallback? onDoubleTap,
+      required GestureLongPressCallback? onLongPress,
+      required GestureTapDownCallback? onTapDown,
+      required GestureTapCancelCallback? onTapCancel,
+      required GestureTapCallback? onRowTap,
+      required GestureTapCallback? onRowDoubleTap,
+      required GestureLongPressCallback? onRowLongPress,
+      required GestureTapCallback? onRowSecondaryTap,
+      required GestureTapDownCallback? onRowSecondaryTapDown,
+      required VoidCallback? onSelectChanged,
+      required MaterialStateProperty<Color?>? overlayColor}) {
     final ThemeData themeData = Theme.of(context);
     if (showEditIcon) {
       const Widget icon = Icon(Icons.edit, size: 18.0);
@@ -365,10 +382,9 @@ class DataTable2 extends DataTable {
     final TextStyle effectiveDataTextStyle = dataTextStyle ??
         themeData.dataTableTheme.dataTextStyle ??
         themeData.textTheme.bodyText2!;
-    final double effectiveDataRowHeight = specificRowHeight ??
-        dataRowHeight ??
-        themeData.dataTableTheme.dataRowHeight ??
-        kMinInteractiveDimension;
+    final double effectiveDataRowHeight =
+        specificRowHeight ?? defaultDataRowHeight;
+
     label = Container(
       padding: padding,
       height: effectiveDataRowHeight,
@@ -383,37 +399,61 @@ class DataTable2 extends DataTable {
         child: DropdownButtonHideUnderline(child: label),
       ),
     );
+
+    // Wrap label intro InkResponse if there're cell or row level tap events
     if (onTap != null ||
         onDoubleTap != null ||
         onLongPress != null ||
         onTapDown != null ||
         onTapCancel != null) {
+      // cell only
       label = InkWell(
-        onTap: onTap,
-        onDoubleTap: onDoubleTap,
-        onLongPress: onLongPress,
+        onTap: () {
+          onTap?.call();
+          onRowTap?.call();
+        },
+        onDoubleTap: () {
+          onDoubleTap?.call();
+          onRowDoubleTap?.call();
+        },
+        onLongPress: () {
+          onLongPress?.call();
+          onRowLongPress?.call();
+        },
         onTapDown: onTapDown,
         onTapCancel: onTapCancel,
         overlayColor: overlayColor,
         child: label,
       );
-    } else {
-      label = GestureDetector(
-        child: TableRowInkWell(
-          child: label,
-          overlayColor: overlayColor,
-          onTap: onRowTap == null
-              ? onSelectChanged
-              : () {
-                  onRowTap();
-                  onSelectChanged();
-                },
-          onDoubleTap: onRowDoubleTap,
-          onLongPress: onRowLongPress,
-        ),
-        onSecondaryTap: onRowSecondaryTap,
-        onSecondaryTapDown: onRowSecondaryTapDown,
+      label =
+          _addSecondaryTaps(onRowSecondaryTap, onRowSecondaryTapDown, label);
+    } else if (onSelectChanged != null ||
+        onRowTap != null ||
+        onRowDoubleTap != null ||
+        onRowLongPress != null ||
+        onRowSecondaryTap != null ||
+        onRowSecondaryTapDown != null) {
+      label = TableRowInkWell(
+        onTap: onRowTap ?? onSelectChanged,
+        onDoubleTap: onRowDoubleTap,
+        onLongPress: onRowLongPress,
+        overlayColor: overlayColor,
+        child: label,
       );
+
+      label =
+          _addSecondaryTaps(onRowSecondaryTap, onRowSecondaryTapDown, label);
+    }
+    return label;
+  }
+
+  Widget _addSecondaryTaps(GestureTapCallback? onRowSecondaryTap,
+      GestureTapDownCallback? onRowSecondaryTapDown, Widget label) {
+    if (onRowSecondaryTap != null || onRowSecondaryTapDown != null) {
+      label = GestureDetector(
+          onSecondaryTap: onRowSecondaryTap,
+          onSecondaryTapDown: onRowSecondaryTapDown,
+          child: label);
     }
     return label;
   }
@@ -425,45 +465,796 @@ class DataTable2 extends DataTable {
     // assert(!_debugInteractive || debugCheckHasMaterial(context));
     assert(debugCheckHasMaterial(context));
 
-    final ThemeData theme = Theme.of(context);
-    final MaterialStateProperty<Color?>? effectiveHeadingRowColor =
+    final theme = Theme.of(context);
+    final effectiveHeadingRowColor =
         headingRowColor ?? theme.dataTableTheme.headingRowColor;
-    final MaterialStateProperty<Color?>? effectiveDataRowColor =
+    final effectiveDataRowColor =
         dataRowColor ?? theme.dataTableTheme.dataRowColor;
-    final MaterialStateProperty<Color?> defaultRowColor =
-        MaterialStateProperty.resolveWith(
+    final defaultRowColor = MaterialStateProperty.resolveWith(
       (Set<MaterialState> states) {
-        if (states.contains(MaterialState.selected))
+        if (states.contains(MaterialState.selected)) {
           return theme.colorScheme.primary.withOpacity(0.08);
+        }
         return null;
       },
     );
-    final bool anyRowSelectable =
+    final anyRowSelectable =
         rows.any((DataRow row) => row.onSelectChanged != null);
-    final bool displayCheckboxColumn = showCheckboxColumn && anyRowSelectable;
-    final Iterable<DataRow> rowsWithCheckbox = displayCheckboxColumn
+    final displayCheckboxColumn = showCheckboxColumn && anyRowSelectable;
+    final rowsWithCheckbox = displayCheckboxColumn
         ? rows.where((DataRow row) => row.onSelectChanged != null)
         : <DataRow2>[];
-    final Iterable<DataRow> rowsChecked =
-        rowsWithCheckbox.where((DataRow row) => row.selected);
-    final bool allChecked =
+    final rowsChecked = rowsWithCheckbox.where((DataRow row) => row.selected);
+    final allChecked =
         displayCheckboxColumn && rowsChecked.length == rowsWithCheckbox.length;
-    final bool anyChecked = displayCheckboxColumn && rowsChecked.isNotEmpty;
-    final bool someChecked = anyChecked && !allChecked;
-    final double effectiveHorizontalMargin = horizontalMargin ??
+    final anyChecked = displayCheckboxColumn && rowsChecked.isNotEmpty;
+    final someChecked = anyChecked && !allChecked;
+    final effectiveHorizontalMargin = horizontalMargin ??
         theme.dataTableTheme.horizontalMargin ??
         _horizontalMargin;
-    final double effectiveColumnSpacing =
+    final effectiveColumnSpacing =
         columnSpacing ?? theme.dataTableTheme.columnSpacing ?? _columnSpacing;
 
-    final List<TableColumnWidth> tableColumns = List<TableColumnWidth>.filled(
+    final double effectiveHeadingRowHeight = headingRowHeight ??
+        theme.dataTableTheme.headingRowHeight ??
+        _headingRowHeight;
+
+    final double defaultDataRowHeight = dataRowHeight ??
+        theme.dataTableTheme.dataRowHeight ??
+        kMinInteractiveDimension;
+
+    final tableColumnWidths = List<TableColumnWidth>.filled(
         columns.length + (displayCheckboxColumn ? 1 : 0),
         const _NullTableColumnWidth());
 
+    final headingRow = _buildHeadingRow(
+        context, theme, effectiveHeadingRowColor, tableColumnWidths.length);
+
+    final actualFixedRows =
+        math.max(0, rows.isEmpty ? 0 : math.min(fixedTopRows, rows.length + 1));
+    final actualFixedColumns = math.max(
+        0,
+        rows.isEmpty
+            ? 0
+            : math.min(fixedLeftColumns,
+                columns.length + (showCheckboxColumn ? 1 : 0)));
+
+    List<TableRow>? coreRows = rows.isEmpty ||
+            actualFixedColumns >= columns.length + (showCheckboxColumn ? 1 : 0)
+        ? null
+        : _buildTableRows(
+            anyRowSelectable,
+            effectiveDataRowColor,
+            context,
+            theme,
+            tableColumnWidths.length - actualFixedColumns,
+            defaultRowColor,
+            actualFixedRows == 0
+                ? _buildHeadingRow(context, theme, effectiveHeadingRowColor,
+                    tableColumnWidths.length - actualFixedColumns)
+                : null,
+            actualFixedRows > 0 ? actualFixedRows - 1 : 0);
+
+    List<TableRow>? fixedColumnsRows = rows.isEmpty
+        ? null
+        : actualFixedColumns > 0
+            ? (actualFixedRows < 1
+                ? [
+                    _buildHeadingRow(
+                        context,
+                        theme,
+                        fixedColumnsColor != null
+                            ? MaterialStatePropertyAll(fixedColumnsColor)
+                            : effectiveHeadingRowColor,
+                        actualFixedColumns),
+                    ..._buildTableRows(
+                        anyRowSelectable,
+                        fixedColumnsColor != null
+                            ? MaterialStatePropertyAll(fixedColumnsColor)
+                            : effectiveDataRowColor,
+                        context,
+                        theme,
+                        actualFixedColumns,
+                        defaultRowColor,
+                        null,
+                        0,
+                        0,
+                        true)
+                  ]
+                : _buildTableRows(
+                    anyRowSelectable,
+                    fixedColumnsColor != null
+                        ? MaterialStatePropertyAll(fixedColumnsColor)
+                        : effectiveDataRowColor,
+                    context,
+                    theme,
+                    actualFixedColumns,
+                    defaultRowColor,
+                    null,
+                    actualFixedRows - 1,
+                    0,
+                    true))
+            : null;
+
+    List<TableRow>? fixedRows = actualFixedRows > 0
+        ? (actualFixedRows == 1
+            ? [
+                _buildHeadingRow(
+                    context,
+                    theme,
+                    headingRowColor ?? effectiveHeadingRowColor,
+                    tableColumnWidths.length - actualFixedColumns)
+              ]
+            : [
+                _buildHeadingRow(
+                    context,
+                    theme,
+                    headingRowColor ?? effectiveHeadingRowColor,
+                    tableColumnWidths.length - actualFixedColumns),
+                ..._buildTableRows(
+                    anyRowSelectable,
+                    headingRowColor ?? effectiveDataRowColor,
+                    context,
+                    theme,
+                    tableColumnWidths.length - actualFixedColumns,
+                    defaultRowColor,
+                    null,
+                    0,
+                    actualFixedRows - 1,
+                    true)
+              ])
+        : null;
+
+    List<TableRow>? fixedCornerRows =
+        actualFixedColumns > 0 && actualFixedRows > 0
+            ? (actualFixedRows == 1
+                ? [
+                    _buildHeadingRow(
+                        context,
+                        theme,
+                        fixedCornerColor != null
+                            ? MaterialStatePropertyAll(fixedCornerColor)
+                            : effectiveHeadingRowColor,
+                        actualFixedColumns)
+                  ]
+                : [
+                    _buildHeadingRow(
+                        context,
+                        theme,
+                        fixedCornerColor != null
+                            ? MaterialStatePropertyAll(fixedCornerColor)
+                            : effectiveHeadingRowColor,
+                        actualFixedColumns),
+                    ..._buildTableRows(
+                        anyRowSelectable,
+                        fixedCornerColor != null
+                            ? MaterialStatePropertyAll(fixedCornerColor)
+                            : effectiveDataRowColor,
+                        context,
+                        theme,
+                        actualFixedColumns,
+                        defaultRowColor,
+                        null,
+                        0,
+                        actualFixedRows - 1,
+                        true)
+                  ])
+            : null;
+
+    double checkBoxWidth = _addCheckBoxes(
+        displayCheckboxColumn,
+        effectiveHorizontalMargin,
+        tableColumnWidths,
+        headingRow,
+        effectiveHeadingRowHeight,
+        context,
+        someChecked,
+        allChecked,
+        coreRows,
+        fixedRows,
+        fixedCornerRows,
+        fixedColumnsRows,
+        rows,
+        actualFixedRows,
+        defaultDataRowHeight,
+        effectiveDataRowColor);
+
+    var builder = LayoutBuilder(builder: (context, constraints) {
+      return SyncedScrollControllers(
+          scrollController: scrollController,
+          sc12toSc11Position: true,
+          builder: (context, sc11, sc12, sc21, sc22) {
+            var coreVerticalController = sc11;
+            var leftColumnVerticalContoller = sc12;
+            var coreHorizontalController = sc21;
+            var fixedRowsHorizontalController = sc22;
+
+            var displayColumnIndex = 0;
+
+            // size & build checkboxes in heading and leftmost column
+            // to be substracted from total width available to columns
+
+            if (checkBoxWidth > 0) displayColumnIndex += 1;
+
+            // size data columns
+            final widths = _calculateDataColumnSizes(
+                constraints, checkBoxWidth, effectiveHorizontalMargin);
+
+            // File empty cells in created rows with actual widgets
+            for (int dataColumnIndex = 0;
+                dataColumnIndex < columns.length;
+                dataColumnIndex++) {
+              final DataColumn column = columns[dataColumnIndex];
+
+              final double paddingStart;
+              if (dataColumnIndex == 0 && displayCheckboxColumn) {
+                paddingStart = effectiveHorizontalMargin / 2.0;
+              } else if (dataColumnIndex == 0 && !displayCheckboxColumn) {
+                paddingStart = effectiveHorizontalMargin;
+              } else {
+                paddingStart = effectiveColumnSpacing / 2.0;
+              }
+
+              final double paddingEnd;
+              if (dataColumnIndex == columns.length - 1) {
+                paddingEnd = effectiveHorizontalMargin;
+              } else {
+                paddingEnd = effectiveColumnSpacing / 2.0;
+              }
+
+              final EdgeInsetsDirectional padding = EdgeInsetsDirectional.only(
+                start: paddingStart,
+                end: paddingEnd,
+              );
+
+              tableColumnWidths[displayColumnIndex] =
+                  FixedColumnWidth(widths[dataColumnIndex]);
+
+              var h = _buildHeadingCell(
+                  context: context,
+                  padding: padding,
+                  effectiveHeadingRowHeight: effectiveHeadingRowHeight,
+                  label: column.label,
+                  tooltip: column.tooltip,
+                  numeric: column.numeric,
+                  onSort: column.onSort != null
+                      ? () => column.onSort!(dataColumnIndex,
+                          sortColumnIndex != dataColumnIndex || !sortAscending)
+                      : null,
+                  sorted: dataColumnIndex == sortColumnIndex,
+                  ascending: sortAscending,
+                  overlayColor: effectiveHeadingRowColor);
+
+              headingRow.children![displayColumnIndex] =
+                  h; // heading row alone is used to display table header should there be no data rows
+
+              if (displayColumnIndex < actualFixedColumns) {
+                if (actualFixedRows < 1) {
+                  fixedColumnsRows![0].children![displayColumnIndex] = h;
+                } else if (actualFixedRows > 0) {
+                  fixedCornerRows![0].children![displayColumnIndex] = h;
+                }
+              } else {
+                if (actualFixedRows < 1 && coreRows != null) {
+                  coreRows[0]
+                      .children![displayColumnIndex - actualFixedColumns] = h;
+                } else if (actualFixedRows > 0) {
+                  fixedRows![0]
+                      .children![displayColumnIndex - actualFixedColumns] = h;
+                }
+              }
+
+              var rowIndex = 0;
+              var skipRows = actualFixedRows == 1
+                  ? 0
+                  : actualFixedRows > 1
+                      ? actualFixedRows - 1
+                      : -1;
+
+              for (final DataRow row in rows) {
+                final DataCell cell = row.cells[dataColumnIndex];
+                //dataRows[rowIndex].children![displayColumnIndex]
+
+                var c = _buildDataCell(
+                    context: context,
+                    padding: padding,
+                    defaultDataRowHeight: defaultDataRowHeight,
+                    specificRowHeight:
+                        row is DataRow2 ? row.specificRowHeight : null,
+                    label: cell.child,
+                    numeric: column.numeric,
+                    placeholder: cell.placeholder,
+                    showEditIcon: cell.showEditIcon,
+                    onTap: cell.onTap,
+                    onDoubleTap: cell.onDoubleTap,
+                    onLongPress: cell.onLongPress,
+                    onTapDown: cell.onTapDown,
+                    onTapCancel: cell.onTapCancel,
+                    onRowTap: row is DataRow2 ? row.onTap : null,
+                    onRowDoubleTap: row is DataRow2 ? row.onDoubleTap : null,
+                    onRowLongPress: row.onLongPress,
+                    onRowSecondaryTap:
+                        row is DataRow2 ? row.onSecondaryTap : null,
+                    onRowSecondaryTapDown:
+                        row is DataRow2 ? row.onSecondaryTapDown : null,
+                    onSelectChanged: row.onSelectChanged != null
+                        ? () => row.onSelectChanged!(!row.selected)
+                        : null,
+                    overlayColor: row.color ?? effectiveDataRowColor);
+
+                if (displayColumnIndex < actualFixedColumns) {
+                  if (rowIndex + 1 < actualFixedRows) {
+                    fixedCornerRows![rowIndex + 1]
+                        .children![displayColumnIndex] = c;
+                  } else {
+                    fixedColumnsRows![rowIndex - skipRows]
+                        .children![displayColumnIndex] = c;
+                  }
+                } else {
+                  if (rowIndex + 1 < actualFixedRows) {
+                    fixedRows![rowIndex + 1]
+                        .children![displayColumnIndex - actualFixedColumns] = c;
+                  } else {
+                    coreRows![rowIndex - skipRows]
+                        .children![displayColumnIndex - actualFixedColumns] = c;
+                  }
+                }
+
+                rowIndex += 1;
+              }
+              displayColumnIndex += 1;
+            }
+
+            var widthsAsMap = tableColumnWidths.asMap();
+            Map<int, TableColumnWidth>? leftWidthsAsMap = actualFixedColumns > 0
+                ? tableColumnWidths.take(actualFixedColumns).toList().asMap()
+                : null;
+            Map<int, TableColumnWidth>? rightWidthsAsMap = actualFixedColumns >
+                    0
+                ? tableColumnWidths.skip(actualFixedColumns).toList().asMap()
+                : null;
+
+            bool isRowsEmpty(List<TableRow>? rows) {
+              return rows == null || rows.isEmpty || rows[0].children!.isEmpty;
+            }
+
+            var coreTable = Table(
+                columnWidths:
+                    actualFixedColumns > 0 ? rightWidthsAsMap : widthsAsMap,
+                children: coreRows ?? [],
+                border: border == null
+                    ? null
+                    : isRowsEmpty(fixedRows) && isRowsEmpty(fixedColumnsRows)
+                        ? border
+                        : !isRowsEmpty(fixedRows) &&
+                                !isRowsEmpty(fixedColumnsRows)
+                            ? TableBorder(
+                                //top: border!.top,
+                                //left: border!.left,
+                                right: border!.right,
+                                bottom: border!.bottom,
+                                verticalInside: border!.verticalInside,
+                                horizontalInside: border!.horizontalInside,
+                                borderRadius: border!.borderRadius)
+                            : isRowsEmpty(fixedRows)
+                                ? TableBorder(
+                                    top: border!.top,
+                                    //left: border!.left,
+                                    right: border!.right,
+                                    bottom: border!.bottom,
+                                    verticalInside: border!.verticalInside,
+                                    horizontalInside: border!.horizontalInside,
+                                    borderRadius: border!.borderRadius)
+                                : TableBorder(
+                                    //top: border!.top,
+                                    left: border!.left,
+                                    right: border!.right,
+                                    bottom: border!.bottom,
+                                    verticalInside: border!.verticalInside,
+                                    horizontalInside: border!.horizontalInside,
+                                    borderRadius: border!.borderRadius));
+
+            Table? fixedRowsTabel;
+            Table? fixedColumnsTable;
+            Table? fixedTopLeftCornerTable;
+            Widget? fixedColumnAndCornerCol;
+            Widget? fixedRowsAndCoreCol;
+
+            if (rows.isNotEmpty) {
+              if (fixedRows != null &&
+                  !isRowsEmpty(fixedRows) &&
+                  actualFixedColumns <
+                      columns.length + (showCheckboxColumn ? 1 : 0)) {
+                fixedRowsTabel = Table(
+                    columnWidths:
+                        actualFixedColumns > 0 ? rightWidthsAsMap : widthsAsMap,
+                    children: fixedRows,
+                    border: border == null
+                        ? null
+                        : isRowsEmpty(fixedCornerRows)
+                            ? border
+                            : TableBorder(
+                                top: border!.top,
+                                //left: border!.left,
+                                right: border!.right,
+                                bottom: border!.bottom,
+                                verticalInside: border!.verticalInside,
+                                horizontalInside: border!.horizontalInside,
+                                borderRadius: border!.borderRadius));
+              }
+
+              if (fixedColumnsRows != null && !isRowsEmpty(fixedColumnsRows)) {
+                fixedColumnsTable = Table(
+                    columnWidths: leftWidthsAsMap,
+                    children: fixedColumnsRows,
+                    border: border == null
+                        ? null
+                        : isRowsEmpty(fixedCornerRows)
+                            ? border
+                            : TableBorder(
+                                //top: border!.top,
+                                left: border!.left,
+                                right: border!.right,
+                                bottom: border!.bottom,
+                                verticalInside: border!.verticalInside,
+                                horizontalInside: border!.horizontalInside,
+                                borderRadius: border!.borderRadius));
+              }
+
+              if (fixedCornerRows != null && !isRowsEmpty(fixedCornerRows)) {
+                fixedTopLeftCornerTable = Table(
+                    columnWidths: leftWidthsAsMap,
+                    children: fixedCornerRows,
+                    border: border);
+              }
+
+              Widget addBottomMargin(Table t) =>
+                  bottomMargin != null && bottomMargin! > 0
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [t, SizedBox(height: bottomMargin!)])
+                      : t;
+
+              fixedRowsAndCoreCol = Scrollbar(
+                  controller: coreHorizontalController,
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(context)
+                            .copyWith(scrollbars: false),
+                        child: SingleChildScrollView(
+                            controller: fixedRowsHorizontalController,
+                            scrollDirection: Axis.horizontal,
+                            child: (fixedRowsTabel != null)
+                                ? fixedRowsTabel
+                                // WOrkaround for a bug when there's no horizontal scrollbar should there be no this SingleChildScrollView. I.e. originally this part was ommited and not scrollable was added to the column if not fixed top row was visible
+                                : SizedBox(
+                                    height: 0,
+                                    width: widths.fold<double>(
+                                        0,
+                                        (previousValue, value) =>
+                                            previousValue + value),
+                                  ))),
+                    Flexible(
+                        fit: FlexFit.tight,
+                        child: SingleChildScrollView(
+                            controller: coreVerticalController,
+                            scrollDirection: Axis.vertical,
+                            child: SingleChildScrollView(
+                                controller: coreHorizontalController,
+                                scrollDirection: Axis.horizontal,
+                                child: addBottomMargin(coreTable))))
+                  ]));
+
+              fixedColumnAndCornerCol = fixedTopLeftCornerTable == null &&
+                      fixedColumnsTable == null
+                  ? null
+                  : Column(mainAxisSize: MainAxisSize.min, children: [
+                      if (fixedTopLeftCornerTable != null)
+                        fixedTopLeftCornerTable,
+                      if (fixedColumnsTable != null)
+                        Flexible(
+                            fit: FlexFit.loose,
+                            child: ScrollConfiguration(
+                                behavior: ScrollConfiguration.of(context)
+                                    .copyWith(scrollbars: false),
+                                child: SingleChildScrollView(
+                                    controller: leftColumnVerticalContoller,
+                                    scrollDirection: Axis.vertical,
+                                    child: addBottomMargin(fixedColumnsTable))))
+                    ]);
+            }
+
+            var completeWidget = Container(
+                decoration: decoration ?? theme.dataTableTheme.decoration,
+                child: rows.isEmpty
+                    ? Column(children: [
+                        SingleChildScrollView(
+                            controller: coreHorizontalController,
+                            scrollDirection: Axis.horizontal,
+                            child: Table(
+                                columnWidths: widthsAsMap,
+                                border: border,
+                                children: [headingRow])),
+                        Flexible(
+                            fit: FlexFit.tight,
+                            child: empty ?? const SizedBox())
+                      ])
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (fixedColumnAndCornerCol != null)
+                            fixedColumnAndCornerCol,
+                          if (fixedRowsAndCoreCol != null)
+                            Flexible(
+                                fit: FlexFit.tight, child: fixedRowsAndCoreCol)
+                        ],
+                      ));
+
+            return completeWidget;
+          });
+    });
+
+    sw.stop();
+
+    if (dataTableShowLogs && kDebugMode) {
+      debugPrint('DataTable2 built: ${sw.elapsedMilliseconds}ms');
+    }
+
+    return builder;
+  }
+
+  double _addCheckBoxes(
+      bool displayCheckboxColumn,
+      double effectiveHorizontalMargin,
+      List<TableColumnWidth> tableColumns,
+      TableRow headingRow,
+      double headingHeight,
+      BuildContext context,
+      bool someChecked,
+      bool allChecked,
+      List<TableRow>? coreRows,
+      List<TableRow>? fixedRows,
+      List<TableRow>? fixedCornerRows,
+      List<TableRow>? fixedColumnRows,
+      List<DataRow> rows,
+      int actualFixedRows,
+      double defaultDataRowHeight,
+      MaterialStateProperty<Color?>? effectiveDataRowColor) {
+    double checkBoxWidth = 0;
+
+    if (displayCheckboxColumn) {
+      checkBoxWidth = effectiveHorizontalMargin +
+          Checkbox.width +
+          effectiveHorizontalMargin / 2.0;
+      tableColumns[0] = FixedColumnWidth(checkBoxWidth);
+
+      // Create heading twice, in the heading row used as back-up for the case of no data and any of the xxx_rows table
+      headingRow.children![0] = _buildCheckbox(
+          context: context,
+          checked: someChecked ? null : allChecked,
+          onRowTap: null,
+          onCheckboxChanged: (bool? checked) =>
+              _handleSelectAll(checked, someChecked),
+          overlayColor: null,
+          tristate: true,
+          rowHeight: headingHeight);
+
+      if (fixedCornerRows != null) {
+        fixedCornerRows[0].children![0] = headingRow.children![0];
+      } else if (fixedColumnRows != null) {
+        fixedColumnRows[0].children![0] = headingRow.children![0];
+      } else if (fixedRows != null) {
+        fixedRows[0].children![0] = headingRow.children![0];
+      } else {
+        coreRows![0].children![0] = headingRow.children![0];
+      }
+
+      var skipRows = actualFixedRows == 1
+          ? 0
+          : actualFixedRows > 1
+              ? actualFixedRows - 1
+              : -1;
+
+      var rowIndex = 0;
+      for (final DataRow row in rows) {
+        var x = _buildCheckbox(
+            context: context,
+            checked: row.selected,
+            onRowTap: () {
+              if (row is DataRow2 && row.onTap != null) {
+                row.onTap?.call();
+              } else {
+                row.onSelectChanged?.call(!row.selected);
+              }
+            },
+            onCheckboxChanged: row.onSelectChanged,
+            overlayColor: row.color ?? effectiveDataRowColor,
+            tristate: false,
+            rowHeight: ((rows[rowIndex] is DataRow2) &&
+                    (rows[rowIndex] as DataRow2).specificRowHeight != null)
+                ? (rows[rowIndex] as DataRow2).specificRowHeight!
+                : defaultDataRowHeight);
+
+        if (fixedCornerRows != null && rowIndex < fixedCornerRows.length - 1) {
+          fixedCornerRows[rowIndex + 1].children![0] = x;
+        } else if (fixedColumnRows != null) {
+          fixedColumnRows[rowIndex - skipRows].children![0] = x;
+        } else if (fixedRows != null && rowIndex < fixedRows.length - 1) {
+          fixedRows[rowIndex + 1].children![0] = x;
+        } else {
+          coreRows![rowIndex - skipRows].children![0] = x;
+        }
+
+        rowIndex += 1;
+      }
+    }
+    return checkBoxWidth;
+  }
+
+  List<double> _calculateDataColumnSizes(BoxConstraints constraints,
+      double checkBoxWidth, double effectiveHorizontalMargin) {
+    var totalColAvailableWidth = constraints.maxWidth;
+    if (minWidth != null && totalColAvailableWidth < minWidth!) {
+      totalColAvailableWidth = minWidth!;
+    }
+
+    // full margins are added to side column widths when no check box column is
+    // present, half-margin added to first data column width is check box column
+    // is present and full margin added to the right
+
+    totalColAvailableWidth = totalColAvailableWidth -
+        checkBoxWidth -
+        effectiveHorizontalMargin -
+        (checkBoxWidth > 0
+            ? effectiveHorizontalMargin / 2
+            : effectiveHorizontalMargin);
+
+    var columnWidth = totalColAvailableWidth / columns.length;
+    var totalColCalculatedWidth = 0.0;
+    var totalFixedWidth = columns.fold<double>(
+        0.0,
+        (previousValue, element) =>
+            previousValue +
+            (element is DataColumn2 && element.fixedWidth != null
+                ? element.fixedWidth!
+                : 0.0));
+
+    assert(totalFixedWidth < totalColAvailableWidth,
+        "DataTable2, combined width of columns of fixed width is greater than availble parent width. Table will be clipped");
+
+    totalColAvailableWidth =
+        math.max(0.0, totalColAvailableWidth - totalFixedWidth);
+
+    // adjust column sizes relative to S, M, L
+    final widths = List<double>.generate(columns.length, (i) {
+      var w = columnWidth;
+      var column = columns[i];
+      if (column is DataColumn2) {
+        if (column.fixedWidth != null) {
+          w = column.fixedWidth!;
+        } else if (column.size == ColumnSize.S) {
+          w *= smRatio;
+        } else if (column.size == ColumnSize.L) {
+          w *= lmRatio;
+        }
+      }
+
+      // skip fixed width columns
+      if (!(column is DataColumn2 && column.fixedWidth != null)) {
+        totalColCalculatedWidth += w;
+      }
+      return w;
+    });
+
+    // scale columns to fit the total lemnght into available width
+
+    var ratio = totalColAvailableWidth / totalColCalculatedWidth;
+    for (var i = 0; i < widths.length; i++) {
+      // skip fixed width column
+      if (!(columns[i] is DataColumn2 &&
+          (columns[i] as DataColumn2).fixedWidth != null)) {
+        widths[i] *= ratio;
+      }
+    }
+
+    // add margins to side columns
+    if (widths.length == 1) {
+      widths[0] = math.max(
+          0,
+          widths[0] +
+              effectiveHorizontalMargin +
+              (checkBoxWidth > 0
+                  ? effectiveHorizontalMargin / 2
+                  : effectiveHorizontalMargin));
+    } else if (widths.length > 1) {
+      widths[0] = math.max(
+          0,
+          widths[0] +
+              (checkBoxWidth > 0
+                  ? effectiveHorizontalMargin / 2
+                  : effectiveHorizontalMargin));
+      widths[widths.length - 1] =
+          math.max(0, widths[widths.length - 1] + effectiveHorizontalMargin);
+    }
+    return widths;
+  }
+
+  List<TableRow> _buildTableRows(
+      bool anyRowSelectable,
+      MaterialStateProperty<Color?>? effectiveDataRowColor,
+      BuildContext context,
+      ThemeData theme,
+      int numberOfCols,
+      MaterialStateProperty<Color?> defaultRowColor,
+      TableRow? headingRow,
+      [int skipRows = 0,
+      int takeRows = 0,
+      bool forceEffectiveDataRowColor = false]) {
+    final rowStartIndex = skipRows;
+    final List<TableRow> tableRows = List<TableRow>.generate(
+      (takeRows <= 0 ? rows.length - skipRows : takeRows) +
+          (headingRow == null ? 0 : 1),
+      (int index) {
+        var actualIndex = headingRow == null ? index : index - 1;
+        if (headingRow != null && index == 0) {
+          return headingRow;
+        } else {
+          final bool isSelected = rows[rowStartIndex + actualIndex].selected;
+          final bool isDisabled = anyRowSelectable &&
+              rows[rowStartIndex + actualIndex].onSelectChanged == null;
+          final Set<MaterialState> states = <MaterialState>{
+            if (isSelected) MaterialState.selected,
+            if (isDisabled) MaterialState.disabled,
+          };
+          final Color? resolvedDataRowColor = (forceEffectiveDataRowColor
+                  ? effectiveDataRowColor
+                  : (rows[rowStartIndex + actualIndex].color ??
+                      effectiveDataRowColor))
+              ?.resolve(states);
+          final Color? rowColor = resolvedDataRowColor;
+          final BorderSide borderSide = Divider.createBorderSide(
+            context,
+            width: dividerThickness ??
+                theme.dataTableTheme.dividerThickness ??
+                _dividerThickness,
+          );
+          final Border border = showBottomBorder
+              ? Border(bottom: borderSide)
+              : Border(top: borderSide);
+          return TableRow(
+            key: rows[rowStartIndex + actualIndex].key,
+            decoration: BoxDecoration(
+              // Changed standard behaviour to never add border should the thickness be 0
+              border: dividerThickness == null ||
+                      (dividerThickness != null && dividerThickness != 0.0)
+                  ? border
+                  : null,
+              color: rowColor ?? defaultRowColor.resolve(states),
+            ),
+            children: List<Widget>.filled(
+                numberOfCols <= 0 ? numberOfCols : numberOfCols,
+                const _NullWidget()),
+          );
+        }
+      },
+    );
+
+    return tableRows;
+  }
+
+  TableRow _buildHeadingRow(
+      BuildContext context,
+      ThemeData theme,
+      MaterialStateProperty<Color?>? effectiveHeadingRowColor,
+      int numberOfCols) {
     var headingRow = TableRow(
       key: _headingRowKey,
       decoration: BoxDecoration(
-        border: showBottomBorder && border == null
+        // Changed standard behaviour to never add border should the thickness be 0
+        border: showBottomBorder &&
+                border == null &&
+                (dividerThickness == null ||
+                    (dividerThickness != null && dividerThickness != 0.0))
             ? Border(
                 bottom: Divider.createBorderSide(
                 context,
@@ -474,291 +1265,19 @@ class DataTable2 extends DataTable {
             : null,
         color: effectiveHeadingRowColor?.resolve(<MaterialState>{}),
       ),
-      children: List<Widget>.filled(tableColumns.length, const _NullWidget()),
+      children: List<Widget>.filled(numberOfCols, const _NullWidget()),
     );
-
-    final List<TableRow> tableRows = List<TableRow>.generate(
-      rows.length,
-      (int index) {
-        final bool isSelected = rows[index].selected;
-        final bool isDisabled =
-            anyRowSelectable && rows[index].onSelectChanged == null;
-        final Set<MaterialState> states = <MaterialState>{
-          if (isSelected) MaterialState.selected,
-          if (isDisabled) MaterialState.disabled,
-        };
-        final Color? resolvedDataRowColor =
-            (rows[index].color ?? effectiveDataRowColor)?.resolve(states);
-        final Color? rowColor = resolvedDataRowColor;
-        final BorderSide borderSide = Divider.createBorderSide(
-          context,
-          width: dividerThickness ??
-              theme.dataTableTheme.dividerThickness ??
-              _dividerThickness,
-        );
-        final Border? _border = showBottomBorder
-            ? Border(bottom: borderSide)
-            : Border(top: borderSide);
-        return TableRow(
-          key: rows[index].key,
-          decoration: border == null
-              ? BoxDecoration(
-                  border: _border,
-                  color: rowColor ?? defaultRowColor.resolve(states),
-                )
-              : null,
-          children:
-              List<Widget>.filled(tableColumns.length, const _NullWidget()),
-        );
-      },
-    );
-
-    var builder = LayoutBuilder(builder: (context, constraints) {
-      int rowIndex;
-
-      int displayColumnIndex = 0;
-      double checkBoxWidth = 0;
-      // size & build checkboxes in heading and leftmost column
-      if (displayCheckboxColumn) {
-        checkBoxWidth = effectiveHorizontalMargin +
-            Checkbox.width +
-            effectiveHorizontalMargin / 2.0;
-        tableColumns[0] = FixedColumnWidth(checkBoxWidth);
-        headingRow.children![0] = _buildCheckbox(
-          context: context,
-          checked: someChecked ? null : allChecked,
-          onRowTap: null,
-          onCheckboxChanged: (bool? checked) =>
-              _handleSelectAll(checked, someChecked),
-          overlayColor: null,
-          tristate: true,
-        );
-        rowIndex = 0;
-        for (final DataRow row in rows) {
-          tableRows[rowIndex].children![0] = _buildCheckbox(
-            context: context,
-            checked: row.selected,
-            onRowTap: () => row.onSelectChanged != null
-                ? row.onSelectChanged!(!row.selected)
-                : null,
-            onCheckboxChanged: row.onSelectChanged,
-            overlayColor: row.color ?? effectiveDataRowColor,
-            tristate: false,
-          );
-          rowIndex += 1;
-        }
-        displayColumnIndex += 1;
-      }
-
-      // size data columns
-      var availableWidth = constraints.maxWidth;
-      if (minWidth != null && availableWidth < minWidth!) {
-        availableWidth = minWidth!;
-      }
-
-      // full margins are added to side column widths when no check box column is
-      // present, half-margin added to first data column width is check box column
-      // is present and full margin added to the right
-      availableWidth -= checkBoxWidth;
-      var totalColWidth = availableWidth -
-          effectiveHorizontalMargin -
-          (displayCheckboxColumn
-              ? effectiveHorizontalMargin / 2
-              : effectiveHorizontalMargin);
-
-      var columnWidth = totalColWidth / columns.length;
-      var totalWidth = 0.0;
-
-      var widths = List<double>.generate(columns.length, (i) {
-        var w = columnWidth;
-        var column = columns[i];
-        if (column is DataColumn2) {
-          if (column.size == ColumnSize.S) {
-            w *= smRatio;
-          } else if (column.size == ColumnSize.L) {
-            w *= lmRatio;
-          }
-        }
-        totalWidth += w;
-        return w;
-      });
-
-      var ratio = totalColWidth / totalWidth;
-
-      for (var i = 0; i < widths.length; i++) {
-        widths[i] *= ratio;
-      }
-
-      if (widths.length == 1) {
-        widths[0] = math.max(
-            0,
-            widths[0] +
-                effectiveHorizontalMargin +
-                (displayCheckboxColumn
-                    ? effectiveHorizontalMargin / 2
-                    : effectiveHorizontalMargin));
-      } else if (widths.length > 1) {
-        widths[0] = math.max(
-            0,
-            widths[0] +
-                (displayCheckboxColumn
-                    ? effectiveHorizontalMargin / 2
-                    : effectiveHorizontalMargin));
-        widths[widths.length - 1] =
-            math.max(0, widths[widths.length - 1] + effectiveHorizontalMargin);
-      }
-
-      for (int dataColumnIndex = 0;
-          dataColumnIndex < columns.length;
-          dataColumnIndex++) {
-        final DataColumn column = columns[dataColumnIndex];
-
-        final double paddingStart;
-        if (dataColumnIndex == 0 && displayCheckboxColumn) {
-          paddingStart = effectiveHorizontalMargin / 2.0;
-        } else if (dataColumnIndex == 0 && !displayCheckboxColumn) {
-          paddingStart = effectiveHorizontalMargin;
-        } else {
-          paddingStart = effectiveColumnSpacing / 2.0;
-        }
-
-        final double paddingEnd;
-        if (dataColumnIndex == columns.length - 1) {
-          paddingEnd = effectiveHorizontalMargin;
-        } else {
-          paddingEnd = effectiveColumnSpacing / 2.0;
-        }
-
-        final EdgeInsetsDirectional padding = EdgeInsetsDirectional.only(
-          start: paddingStart,
-          end: paddingEnd,
-        );
-
-        tableColumns[displayColumnIndex] =
-            FixedColumnWidth(widths[dataColumnIndex]);
-
-        headingRow.children![displayColumnIndex] = _buildHeadingCell(
-          context: context,
-          padding: padding,
-          label: column.label,
-          tooltip: column.tooltip,
-          numeric: column.numeric,
-          onSort: column.onSort != null
-              ? () => column.onSort!(dataColumnIndex,
-                  sortColumnIndex != dataColumnIndex || !sortAscending)
-              : null,
-          sorted: dataColumnIndex == sortColumnIndex,
-          ascending: sortAscending,
-          overlayColor: effectiveHeadingRowColor,
-        );
-
-        rowIndex = 0;
-        for (final DataRow row in rows) {
-          final DataCell cell = row.cells[dataColumnIndex];
-          tableRows[rowIndex].children![displayColumnIndex] = _buildDataCell(
-            context: context,
-            padding: padding,
-            specificRowHeight: row is DataRow2 ? row.specificRowHeight : null,
-            label: cell.child,
-            numeric: column.numeric,
-            placeholder: cell.placeholder,
-            showEditIcon: cell.showEditIcon,
-            onTap: cell.onTap,
-            onDoubleTap: cell.onDoubleTap,
-            onLongPress: cell.onLongPress,
-            onTapDown: cell.onTapDown,
-            onTapCancel: cell.onTapCancel,
-            onRowTap: row is DataRow2 ? row.onTap : null,
-            onRowDoubleTap: row is DataRow2 ? row.onDoubleTap : null,
-            onRowLongPress: row is DataRow2 ? row.onLongPress : null,
-            onRowSecondaryTap: row is DataRow2 ? row.onSecondaryTap : null,
-            onRowSecondaryTapDown:
-                row is DataRow2 ? row.onSecondaryTapDown : null,
-            onSelectChanged: () => row.onSelectChanged != null
-                ? row.onSelectChanged!(!row.selected)
-                : null,
-            overlayColor: row.color ?? effectiveDataRowColor,
-          );
-          rowIndex += 1;
-        }
-        displayColumnIndex += 1;
-      }
-
-      var widthsAsMap = tableColumns.asMap();
-
-      TableBorder? headingBorder;
-      TableBorder? dataRowsBorder;
-
-      if (border != null) {
-        headingBorder = TableBorder(
-            top: border!.top,
-            left: border!.left,
-            right: border!.right,
-            bottom: border!.horizontalInside,
-            verticalInside: border!.verticalInside);
-        dataRowsBorder = TableBorder(
-            left: border!.left,
-            right: border!.right,
-            bottom: border!.bottom,
-            verticalInside: border!.verticalInside,
-            horizontalInside: border!.horizontalInside);
-      }
-
-      var dataRows = Table(
-        columnWidths: widthsAsMap,
-        children: tableRows,
-        border: dataRowsBorder,
-      );
-
-      var marginedTable = bottomMargin != null && bottomMargin! > 0
-          ? Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [dataRows, SizedBox(height: bottomMargin!)])
-          : dataRows;
-
-      var t = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Table(
-              columnWidths: widthsAsMap,
-              children: [headingRow],
-              border: headingBorder),
-          Flexible(
-              fit: FlexFit.loose,
-              child: tableRows.isEmpty
-                  ? empty ?? SizedBox()
-                  : SingleChildScrollView(
-                      child: marginedTable, controller: scrollController))
-        ],
-      );
-
-      var w = Container(
-          decoration: decoration ?? theme.dataTableTheme.decoration,
-          child: availableWidth > constraints.maxWidth
-              ? Scrollbar(
-                  controller: _horizontalController,
-                  child: SingleChildScrollView(
-                      controller: _horizontalController,
-                      scrollDirection: Axis.horizontal,
-                      child: t))
-              : t);
-
-      return w;
-    });
-
-    sw.stop();
-    if (!kReleaseMode) print('DataTable2 built: ${sw.elapsedMilliseconds}ms');
-    return builder;
+    return headingRow;
   }
 }
 
 class _SortArrow extends StatefulWidget {
   const _SortArrow({
-    Key? key,
     required this.visible,
     required this.up,
     required this.duration,
-  }) : super(key: key);
+    required this.sortArrowIcon,
+  });
 
   final bool visible;
 
@@ -766,14 +1285,13 @@ class _SortArrow extends StatefulWidget {
 
   final Duration duration;
 
+  final IconData sortArrowIcon;
+
   @override
-  _SortArrowState createState() => _SortArrowState(up);
+  _SortArrowState createState() => _SortArrowState();
 }
 
 class _SortArrowState extends State<_SortArrow> with TickerProviderStateMixin {
-  _SortArrowState(bool? up) {
-    _up = up;
-  }
   late AnimationController _opacityController;
   late Animation<double> _opacityAnimation;
 
@@ -790,6 +1308,7 @@ class _SortArrowState extends State<_SortArrow> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _up = widget.up;
     _opacityAnimation = CurvedAnimation(
       parent: _opacityController = AnimationController(
         duration: widget.duration,
@@ -870,8 +1389,8 @@ class _SortArrowState extends State<_SortArrow> with TickerProviderStateMixin {
             Matrix4.rotationZ(_orientationOffset + _orientationAnimation.value)
               ..setTranslationRaw(0.0, _arrowIconBaselineOffset, 0.0),
         alignment: Alignment.center,
-        child: const Icon(
-          Icons.arrow_upward,
+        child: Icon(
+          widget.sortArrowIcon,
           size: _arrowIconSize,
         ),
       ),
@@ -879,6 +1398,7 @@ class _SortArrowState extends State<_SortArrow> with TickerProviderStateMixin {
   }
 }
 
+// coverage:ignore-start
 class _NullTableColumnWidth extends TableColumnWidth {
   const _NullTableColumnWidth();
 
@@ -896,4 +1416,127 @@ class _NullWidget extends Widget {
 
   @override
   Element createElement() => throw UnimplementedError();
+}
+// coverage:ignore-end
+
+/// Creates pairs of scroll controllers which can be provided to scrollables and ensure that
+/// offset change in one scrollable scroll the second one (and vice a versa)
+/// There's a bug (or feature) on iOS with bouncing scroll (when it goes out of range)
+/// when scrollable get out of sync while in this bouncing position
+class SyncedScrollControllers extends StatefulWidget {
+  const SyncedScrollControllers(
+      {super.key,
+      required this.builder,
+      this.scrollController,
+      this.sc12toSc11Position = false});
+
+  /// One of the controllers (sc11) won't be created by this widget
+  /// but rather use externally provided one
+  final ScrollController? scrollController;
+
+  /// Whether to set sc12 initison offset to the value from sc11
+  final bool sc12toSc11Position;
+
+  /// Positions of 2 pairs of scroll controllers (sc11|sc12 and sc21|sc22)
+  /// will be synchronized, attached scrollables will copy the positions
+  final Widget Function(
+      BuildContext context,
+      ScrollController sc11,
+      ScrollController sc12,
+      ScrollController sc21,
+      ScrollController sc22) builder;
+
+  @override
+  SyncedScrollControllersState createState() => SyncedScrollControllersState();
+}
+
+class SyncedScrollControllersState extends State<SyncedScrollControllers> {
+  ScrollController? _sc11;
+  late ScrollController _sc12;
+  late ScrollController _sc21;
+  late ScrollController _sc22;
+
+  final List<void Function()> _listeners = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _initControllers();
+  }
+
+  @override
+  void didUpdateWidget(SyncedScrollControllers oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _disposeOrUnsubscribe();
+    _initControllers();
+  }
+
+  @override
+  void dispose() {
+    _disposeOrUnsubscribe();
+    super.dispose();
+  }
+
+  void _initControllers() {
+    _doNotReissueJump.clear();
+    var offset =
+        _sc11 == null || _sc11!.positions.isEmpty ? 0.0 : _sc11!.offset;
+    if (widget.scrollController != null) {
+      _sc11 = widget.scrollController!;
+      if (_sc11!.positions.isNotEmpty) {
+        offset = _sc11!.offset;
+      }
+    } else {
+      _sc11 = ScrollController();
+    }
+
+    _sc12 = ScrollController(
+        initialScrollOffset: widget.sc12toSc11Position ? offset : 0.0);
+
+    _sc21 = ScrollController();
+    _sc22 = ScrollController();
+
+    _syncScrollControllers(_sc11!, _sc12);
+    _syncScrollControllers(_sc21, _sc22);
+  }
+
+  void _disposeOrUnsubscribe() {
+    if (widget.scrollController == _sc11) {
+      _sc11?.removeListener(_listeners[0]);
+    } else {
+      _sc11?.dispose();
+    }
+    _sc12.dispose();
+    _sc21.dispose();
+    _sc22.dispose();
+    _listeners.clear();
+  }
+
+  final Map<ScrollController, bool> _doNotReissueJump = {};
+
+  void _syncScrollControllers(ScrollController sc1, ScrollController sc2) {
+    var l = () => _jumpToNoCascade(sc1, sc2);
+    sc1.addListener(l);
+    _listeners.add(l);
+    l = () => _jumpToNoCascade(sc2, sc1);
+    sc2.addListener(l);
+  }
+
+  void _jumpToNoCascade(ScrollController master, ScrollController slave) {
+    //print('$master $slave');
+    if (!slave.hasClients || slave.position.outOfRange) {
+      return; //outOfRange check for bounce case, bug #113
+    }
+    if (_doNotReissueJump[master] == null ||
+        _doNotReissueJump[master]! == false) {
+      _doNotReissueJump[slave] = true;
+      slave.jumpTo(master.offset);
+    } else {
+      _doNotReissueJump[master] = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      widget.builder(context, _sc11!, _sc12, _sc21, _sc22);
 }

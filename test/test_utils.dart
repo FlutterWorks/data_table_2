@@ -4,16 +4,24 @@
 
 // Copyright 2021 Maxim Saplin - changes and modifications to original Flutter implementation of DataTable
 
+// ignore_for_file: avoid_print
+
 import 'package:data_table_2/data_table_2.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Future wrapWidgetSetSurf(WidgetTester tester, Widget widget) async {
-  await tester.binding.setSurfaceSize(Size(1000, 200));
+Future wrapWidgetSetSurf(WidgetTester tester, Widget widget,
+    [Size? size]) async {
+  await tester.binding.setSurfaceSize(size ?? const Size(1000, 200));
+
+  // tester.binding.window.physicalSizeTestValue = size != null
+  //     ? Size(size.width * tester.binding.window.devicePixelRatio,
+  //         size.height * tester.binding.window.devicePixelRatio)
+  //     : Size(1000 * tester.binding.window.devicePixelRatio,
+  //         200 * tester.binding.window.devicePixelRatio);
+
   return tester.pumpWidget(MaterialApp(home: Material(child: widget)));
-  // return tester.pumpWidget(
-  //     MaterialApp(home: Material(child: widget)), Duration(seconds: 10));
 }
 
 Finder findFirstContainerFor(String text) =>
@@ -120,25 +128,49 @@ final testRows = kDesserts.map<DataRow2>((Dessert dessert) {
 DataTable2 buildTable(
     {int? sortColumnIndex,
     bool sortAscending = true,
+    IconData? sortArrowIcon,
+    Duration? sortArrowAnimationDuration,
     bool overrideSizes = false,
     double? minWidth,
-    bool noData = false,
+    int fixedTopRows = 1,
+    int fixedLeftColumns = 0,
+    Color? fixedColumnsColor,
+    Color? fixedCornerColor,
+    Color? headingRowColor,
+    double? dividerThickness,
+    bool showBottomBorder = false,
+    TableBorder? border,
+    double? bottomMargin,
     Widget? empty,
+    bool showCheckboxColumn = true,
     ScrollController? scrollController,
-    List<DataColumn2>? columns}) {
+    List<DataColumn2>? columns,
+    List<DataRow2>? rows}) {
   return DataTable2(
     horizontalMargin: 24,
-    showCheckboxColumn: true,
+    bottomMargin: bottomMargin,
+    showCheckboxColumn: showCheckboxColumn,
     sortColumnIndex: sortColumnIndex,
     sortAscending: sortAscending,
+    sortArrowIcon: sortArrowIcon ?? Icons.arrow_upward,
+    headingRowColor: MaterialStatePropertyAll(headingRowColor),
+    sortArrowAnimationDuration:
+        sortArrowAnimationDuration ?? const Duration(milliseconds: 150),
     minWidth: minWidth,
+    fixedTopRows: fixedTopRows,
+    fixedLeftColumns: fixedLeftColumns,
+    fixedColumnsColor: fixedColumnsColor,
+    fixedCornerColor: fixedCornerColor,
+    dividerThickness: dividerThickness,
+    showBottomBorder: showBottomBorder,
+    border: border,
     empty: empty,
     onSelectAll: (bool? value) {},
     columns: columns ?? testColumns,
     scrollController: scrollController,
     smRatio: overrideSizes ? 0.5 : 0.67,
     lmRatio: overrideSizes ? 1.5 : 1.2,
-    rows: noData ? [] : testRows,
+    rows: rows ?? testRows,
   );
 }
 
@@ -204,6 +236,8 @@ class TestDataSource extends DataTableSource {
 PaginatedDataTable2 buildPaginatedTable(
     {int? sortColumnIndex,
     bool sortAscending = true,
+    IconData? sortArrowIcon,
+    Duration? sortArrowAnimationDuration,
     bool showPage = true,
     bool showGeneration = true,
     bool overrideSizes = false,
@@ -213,9 +247,12 @@ PaginatedDataTable2 buildPaginatedTable(
     bool showPageSizeSelector = false,
     bool noData = false,
     bool hidePaginator = false,
+    TableBorder? border,
     PaginatorController? controller,
     Widget? empty,
+    FlexFit fit = FlexFit.tight,
     ScrollController? scrollController,
+    MaterialStateProperty<Color?>? headingRowColor,
     double? minWidth,
     Function(int?)? onRowsPerPageChanged,
     List<DataColumn2>? columns}) {
@@ -223,14 +260,20 @@ PaginatedDataTable2 buildPaginatedTable(
     horizontalMargin: 24,
     showCheckboxColumn: true,
     wrapInCard: wrapInCard,
-    header: showHeader ? Text('Header') : null,
+    header: showHeader ? const Text('Header') : null,
     sortColumnIndex: sortColumnIndex,
     sortAscending: sortAscending,
+    sortArrowIcon: sortArrowIcon ?? Icons.arrow_upward,
+    sortArrowAnimationDuration:
+        sortArrowAnimationDuration ?? const Duration(milliseconds: 150),
     onSelectAll: (bool? value) {},
     columns: columns ?? testColumns,
     showFirstLastButtons: true,
     controller: controller,
+    border: border,
+    headingRowColor: headingRowColor,
     empty: empty,
+    fit: fit,
     scrollController: scrollController,
     hidePaginator: hidePaginator,
     minWidth: minWidth,
@@ -251,6 +294,8 @@ PaginatedDataTable2 buildPaginatedTable(
 PaginatedDataTable2 buildAsyncPaginatedTable(
     {int? sortColumnIndex,
     bool sortAscending = true,
+    IconData? sortArrowIcon,
+    Duration? sortArrowAnimationDuration,
     bool showPage = true,
     bool showGeneration = true,
     bool overrideSizes = false,
@@ -264,9 +309,11 @@ PaginatedDataTable2 buildAsyncPaginatedTable(
     int rowsPerPage = 10,
     initialFirstRowIndex = 0,
     bool circularSpinner = false,
+    Function(bool? value)? onSelectAll,
     bool showCheckboxColumn = true,
     bool fewerResultsAfterRefresh = false,
     PaginatorController? controller,
+    AsyncDataTableSource? source,
     Widget? empty,
     PageSyncApproach syncApproach = PageSyncApproach.doNothing,
     // Return less rows when calling refresh method on the data source
@@ -279,16 +326,19 @@ PaginatedDataTable2 buildAsyncPaginatedTable(
     showCheckboxColumn: showCheckboxColumn,
     wrapInCard: wrapInCard,
     initialFirstRowIndex: initialFirstRowIndex,
-    header: showHeader ? Text('Header') : null,
+    header: showHeader ? const Text('Header') : null,
     sortColumnIndex: sortColumnIndex,
     sortAscending: sortAscending,
-    onSelectAll: (bool? value) {},
+    sortArrowIcon: sortArrowIcon ?? Icons.arrow_upward,
+    sortArrowAnimationDuration:
+        sortArrowAnimationDuration ?? const Duration(milliseconds: 150),
+    onSelectAll: onSelectAll ?? (bool? value) {},
     columns: columns ?? testColumns,
     showFirstLastButtons: true,
     controller: controller,
     rowsPerPage: rowsPerPage,
     loading: circularSpinner
-        ? Center(
+        ? const Center(
             child: SizedBox(
                 width: 32,
                 height: 32,
@@ -309,12 +359,13 @@ PaginatedDataTable2 buildAsyncPaginatedTable(
         ? onRowsPerPageChanged ?? (int? rowsPerPage) {}
         : null,
     pageSyncApproach: syncApproach,
-    source: DessertDataSourceAsync(
-        allowSelection: true,
-        showPage: showPage,
-        noData: noData,
-        fewerResultsAfterRefresh: fewerResultsAfterRefresh)
-      .._errorCounter = throwError ? 0 : null,
+    source: source ??
+        (DessertDataSourceAsync(
+            allowSelection: true,
+            showPage: showPage,
+            noData: noData,
+            fewerResultsAfterRefresh: fewerResultsAfterRefresh)
+          .._errorCounter = throwError ? 0 : null),
   );
 }
 
@@ -343,7 +394,7 @@ class DessertDataSourceAsync extends AsyncDataTableSource {
     notifyListeners();
   }
 
-  bool _empty = false;
+  final bool _empty = false;
   int? _errorCounter;
 
   final DesertsFakeWebService _repo = DesertsFakeWebService();
@@ -359,7 +410,7 @@ class DessertDataSourceAsync extends AsyncDataTableSource {
 
   Future<int> getTotalRecors() {
     return Future<int>.delayed(
-        Duration(milliseconds: 0), () => _empty ? 0 : _dessertsX3.length);
+        const Duration(milliseconds: 0), () => _empty ? 0 : _dessertsX3.length);
   }
 
   @override
@@ -369,7 +420,7 @@ class DessertDataSourceAsync extends AsyncDataTableSource {
       _errorCounter = _errorCounter! + 1;
 
       if (_errorCounter! % 2 == 1) {
-        await Future.delayed(Duration(milliseconds: 1000));
+        await Future.delayed(const Duration(milliseconds: 1000));
         throw 'Error #${((_errorCounter! - 1) / 2).round() + 1} has occured';
       }
     }
@@ -378,18 +429,19 @@ class DessertDataSourceAsync extends AsyncDataTableSource {
     assert(index >= 0);
 
     var x = _empty
-        ? await Future.delayed(Duration(milliseconds: 2000),
+        ? await Future.delayed(const Duration(milliseconds: 2000),
             () => DesertsFakeWebServiceResponse(0, []))
         : (_usefewerResultsAfterRefresh)
             ? await Future.delayed(
-                Duration(milliseconds: 2000),
+                const Duration(milliseconds: 2000),
                 () => DesertsFakeWebServiceResponse(
                     10, _dessertsX3.take(10).toList()))
             : await _repo.getData(startIndex, count, _sortColumn,
                 _sortAscending, noData, useKDeserts);
 
-    if (fewerResultsAfterRefresh && !_usefewerResultsAfterRefresh)
+    if (fewerResultsAfterRefresh && !_usefewerResultsAfterRefresh) {
       _usefewerResultsAfterRefresh = true;
+    }
 
     var r = AsyncRowsResponse(
         x.totalRecords,
@@ -398,8 +450,9 @@ class DessertDataSourceAsync extends AsyncDataTableSource {
             key: ValueKey<int>(dessert.id),
             selected: dessert.selected,
             onSelectChanged: (value) {
-              if (value != null)
+              if (value != null) {
                 setRowSelection(ValueKey<int>(dessert.id), value);
+              }
             },
             cells: <DataCell>[
               DataCell(
@@ -489,7 +542,7 @@ class DesertsFakeWebService {
 List<Dessert> _desserts = kDesserts;
 
 List<Dessert> _dessertsX3 = _desserts.toList()
-  ..addAll(_desserts.map((i) => Dessert(i.name + ' x2', i.calories, i.fat,
+  ..addAll(_desserts.map((i) => Dessert('${i.name} x2', i.calories, i.fat,
       i.carbs, i.protein, i.sodium, i.calcium, i.iron)))
-  ..addAll(_desserts.map((i) => Dessert(i.name + ' x3', i.calories, i.fat,
+  ..addAll(_desserts.map((i) => Dessert('${i.name} x3', i.calories, i.fat,
       i.carbs, i.protein, i.sodium, i.calcium, i.iron)));

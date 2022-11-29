@@ -1,3 +1,48 @@
+# 2.3.8
+- Fixed horizontal divider not being displayed in fixed column cells when fixedColumnColor was defined
+- Aligned/refactored fixed sections colors (headingColor, fixedRowColor, fixedColumnColor)
+ - Now headingColor is applied to all fixed rows, before it was only applied to all rows
+ - Fixed colors now take precedence despite any color overrides (e.g. DataRow.color)
+- Added few golden tests
+
+# 2.3.7
+- Row tap events now do not bubble onSelectChanged() event handler, yet it still fires if there's a checkbox column and a checkbox is clicked (PR #133)
+
+## 2.3.6
+-  Added sortArrowIcon and sortArrowAnimationDuration properties
+
+## 2.3.5
+- Refactored scroll syncing approach, no static workaround and potential memleaks
+- Fixed locked scrolling when bouncing on iOS (#113)
+
+## 2.3.4
+- Fix for #111, synchronized scroll position for left fixed column with core table when fixed column is added and core table is already scrolled
+
+## 2.3.3
+- Fixed column width/applying border to heading rows in case there're no data rows provided (#108)
+
+## 2.3.2
+- Fixed horizontal scrolling not working (jumping\stuttering with small shifts) on Android and iOS
+
+## 2.3.1
+- Changed readme, added notes regarding putting the widgets inside scrollable and Column
+
+## 2.3.0
+- Added fixed columns (DataTable2.fixedLeftColumns)
+- Number of fixed rows can now be changed (DataTable2.fixedTopRows)
+- Background color of fixed columns and fixed corner (when both fixed cols and rows are used)
+
+## 2.2.3
+- Added Border and Zebra stripes sample, removed Borders sample
+- Refactored row/cell tap events, event bubbling added, no hovering effect is visible if there're no tap events in the tables
+
+## 2.2.2
+- Added PaginatedDataTable2.headingRowColor property
+- DataColumn2.fixedWidth - set column's width as absolute value
+- Upgrade to Flutter 3.0 and Dart 2.17.0
+- Added flutter_lints
+- Changed constructors to inline super params
+
 ## 2.2.1
 - DataRow2.specificRowHeight allows overriding default row height for any row. The feature allows to have arbitrary heights of rows rather then same height for every row
 - Added example for DataRow2.specificRowHeight

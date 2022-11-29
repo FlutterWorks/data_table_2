@@ -49,8 +49,9 @@ class PaginatorController extends ChangeNotifier {
   }
 
   void _checkAttachedAndThrow() {
-    if (_state == null)
+    if (_state == null) {
       throw 'PaginatorController is not attached to any PaginatedDataTable2 and can\'t be used';
+    }
   }
 
   void _assertIfNotAttached() {
@@ -157,15 +158,18 @@ class PaginatedDataTable2 extends StatefulWidget {
   /// Check out [PaginatedDataTable] for the API decription.
   /// Key differences are [minWidth] and [fit] properties.
   PaginatedDataTable2({
-    Key? key,
+    super.key,
     this.header,
     this.actions,
     required this.columns,
     this.sortColumnIndex,
     this.sortAscending = true,
+    this.sortArrowAnimationDuration = const Duration(milliseconds: 150),
+    this.sortArrowIcon = Icons.arrow_upward,
     this.onSelectAll,
     this.dataRowHeight = kMinInteractiveDimension,
     this.headingRowHeight = 56.0,
+    this.headingRowColor,
     this.horizontalMargin = 24.0,
     this.columnSpacing = 56.0,
     this.showCheckboxColumn = true,
@@ -200,11 +204,11 @@ class PaginatedDataTable2 extends StatefulWidget {
             (sortColumnIndex >= 0 && sortColumnIndex < columns.length)),
         assert(rowsPerPage > 0),
         assert(() {
-          if (onRowsPerPageChanged != null && autoRowsToHeight == false)
+          if (onRowsPerPageChanged != null && autoRowsToHeight == false) {
             assert(availableRowsPerPage.contains(rowsPerPage));
+          }
           return true;
-        }()),
-        super(key: key);
+        }());
 
   final bool wrapInCard;
 
@@ -242,6 +246,15 @@ class PaginatedDataTable2 extends StatefulWidget {
   /// See [DataTable.sortAscending].
   final bool sortAscending;
 
+  /// When changing sort direction an arrow icon in the header is rotated clockwise.
+  /// The value defines the duration of the rotation animation.
+  /// If not set, the default animation duration is 150 ms.
+  final Duration sortArrowAnimationDuration;
+
+  /// Icon to be displayed when sorting is applied to a column.
+  /// If not set, the default icon is [Icons.arrow_upward]
+  final IconData sortArrowIcon;
+
   /// Invoked when the user selects or unselects every row, using the
   /// checkbox in the heading row.
   ///
@@ -258,6 +271,37 @@ class PaginatedDataTable2 extends StatefulWidget {
   ///
   /// This value is optional and defaults to 56.0 if not specified.
   final double headingRowHeight;
+
+  /// {@template flutter.material.dataTable.headingRowColor}
+  /// The background color for the heading row.
+  ///
+  /// The effective background color can be made to depend on the
+  /// [MaterialState] state, i.e. if the row is pressed, hovered, focused when
+  /// sorted. The color is painted as an overlay to the row. To make sure that
+  /// the row's [InkWell] is visible (when pressed, hovered and focused), it is
+  /// recommended to use a translucent color.
+  /// {@endtemplate}
+  ///
+  /// If null, [DataTableThemeData.headingRowColor] is used.
+  ///
+  /// {@template flutter.material.DataTable.headingRowColor}
+  /// ```dart
+  /// PaginatedDataTable2(
+  ///   headingRowColor: MaterialStateProperty.resolveWith<Color?>((Set<MaterialState> states) {
+  ///     if (states.contains(MaterialState.hovered))
+  ///       return Theme.of(context).colorScheme.primary.withOpacity(0.08);
+  ///     return null;  // Use the default value.
+  ///   }),
+  /// )
+  /// ```
+  ///
+  /// See also:
+  ///
+  ///  * The Material Design specification for overlay colors and how they
+  ///    match a component's state:
+  ///    <https://material.io/design/interaction/states.html#anatomy>.
+  /// {@endtemplate}
+  final MaterialStateProperty<Color?>? headingRowColor;
 
   /// The horizontal margin between the edges of the table and the content
   /// in the first and last cells of each row.
@@ -340,13 +384,11 @@ class PaginatedDataTable2 extends StatefulWidget {
   /// you want the paginator to stick to the bottom when there're few rows) or
   /// of you want to have the table to take minimal space and do not have bottom
   /// pager stick to the bottom (FlexFit.loose)
-  // TODO add test
   final FlexFit fit;
 
   /// Set vertical and horizontal borders between cells, as well as outside borders around table.
   /// NOTE: setting this field will disable standard horizontal dividers which are controlled by
   /// themes and [dividerThickness] property
-  // TODO: Add test
   final TableBorder? border;
 
   ///If true rows per page is set to fill available height so that no scroll bar is ever displayed.
@@ -373,7 +415,7 @@ class PaginatedDataTable2 extends StatefulWidget {
   /// [PaginatorController]
   final PaginatorController? controller;
 
-  /// Exposes scroll controller of the SingleChildScrollView that makes data rows horizontally scrollable
+  /// Exposes scroll controller of the SingleChildScrollView that makes data rows vertically scrollable
   final ScrollController? scrollController;
 
   @override
@@ -397,9 +439,10 @@ class PaginatedDataTable2State extends State<PaginatedDataTable2> {
     // Notifying listeners in the next message queue pass
     // Doing that in the current call somehow messes with update
     // lifecycle when using async table
-    if (widget.controller != null)
-      Future.delayed(Duration(milliseconds: 0),
+    if (widget.controller != null) {
+      Future.delayed(const Duration(milliseconds: 0),
           () => widget.controller?._notifyListeners());
+    }
     //widget.controller?._notifyListeners();
     super.setState(fn);
   }
@@ -462,8 +505,10 @@ class PaginatedDataTable2State extends State<PaginatedDataTable2> {
           ? _alignRowIndex(rowIndex, _effectiveRowsPerPage)
           : math.max(math.min(_rowCount - 1, rowIndex), 0);
     });
-    if ((widget.onPageChanged != null) && (oldFirstRowIndex != _firstRowIndex))
+    if ((widget.onPageChanged != null) &&
+        (oldFirstRowIndex != _firstRowIndex)) {
       widget.onPageChanged!(_firstRowIndex);
+    }
   }
 
   DataRow _getBlankRowFor(int index) {
@@ -496,13 +541,15 @@ class PaginatedDataTable2State extends State<PaginatedDataTable2> {
   }
 
   // Flag to be used by AsyncDataTable to show empty table when loading data
+  // ignore: prefer_final_fields
   bool _showNothing = false;
 
   List<DataRow> _getRows(int firstRowIndex, int rowsPerPage) {
     final List<DataRow> result = <DataRow>[];
 
-    if ((widget.empty != null && widget.source.rowCount < 1) || _showNothing)
-      return result; // If empty placeholder is provided - don't create blank rows
+    if ((widget.empty != null && widget.source.rowCount < 1) || _showNothing) {
+      return result;
+    } // If empty placeholder is provided - don't create blank rows
 
     final int nextPageFirstRowIndex = firstRowIndex + rowsPerPage;
     bool haveProgressIndicator = false;
@@ -618,11 +665,14 @@ class PaginatedDataTable2State extends State<PaginatedDataTable2> {
           columns: widget.columns,
           sortColumnIndex: widget.sortColumnIndex,
           sortAscending: widget.sortAscending,
+          sortArrowIcon: widget.sortArrowIcon,
+          sortArrowAnimationDuration: widget.sortArrowAnimationDuration,
           onSelectAll: widget.onSelectAll,
           // Make sure no decoration is set on the DataTable
           // from the theme, as its already wrapped in a Card.
           decoration: const BoxDecoration(),
           dataRowHeight: widget.dataRowHeight,
+          headingRowColor: widget.headingRowColor,
           headingRowHeight: widget.headingRowHeight,
           horizontalMargin: widget.horizontalMargin,
           checkboxHorizontalMargin: widget.checkboxHorizontalMargin,
@@ -750,16 +800,18 @@ class PaginatedDataTable2State extends State<PaginatedDataTable2> {
 
   void _setRowsPerPage(int? r, [bool wrapInSetState = true]) {
     if (r != null) {
-      var f = () {
+      f() {
         _effectiveRowsPerPage = r;
         if (widget.onRowsPerPageChanged != null) {
           widget.onRowsPerPageChanged!(r);
         }
-      };
-      if (wrapInSetState)
+      }
+
+      if (wrapInSetState) {
         setState(f);
-      else
+      } else {
         f();
+      }
     }
   }
 

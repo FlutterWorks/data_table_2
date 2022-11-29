@@ -12,13 +12,13 @@ import '../nav_helper.dart';
 // Changes and modifications by Maxim Saplin, 2021
 
 class DataTable2Demo extends StatefulWidget {
-  const DataTable2Demo();
+  const DataTable2Demo({super.key});
 
   @override
-  _DataTable2DemoState createState() => _DataTable2DemoState();
+  DataTable2DemoState createState() => DataTable2DemoState();
 }
 
-class _DataTable2DemoState extends State<DataTable2Demo> {
+class DataTable2DemoState extends State<DataTable2Demo> {
   bool _sortAscending = true;
   int? _sortColumnIndex;
   late DessertDataSource _dessertsDataSource;
@@ -33,7 +33,8 @@ class _DataTable2DemoState extends State<DataTable2Demo> {
           context,
           false,
           currentRouteOption == rowTaps,
-          currentRouteOption == rowHeightOverrides);
+          currentRouteOption == rowHeightOverrides,
+          currentRouteOption == showBordersWithZebraStripes);
       // Default sorting sample. Set __sortColumnIndex to 0 and uncoment the lines below
       // if (_sortColumnIndex == 0) {
       //   _sort<String>((d) => d.name, _sortColumnIndex!, _sortAscending);
@@ -70,74 +71,83 @@ class _DataTable2DemoState extends State<DataTable2Demo> {
       child: DataTable2(
         columnSpacing: 12,
         horizontalMargin: 12,
-        border: getCurrentRouteOption(context) == showBorders
+        border: getCurrentRouteOption(context) == fixedColumnWidth
             ? TableBorder(
-                top: BorderSide(color: Colors.black),
+                top: const BorderSide(color: Colors.black),
                 bottom: BorderSide(color: Colors.grey[300]!),
                 left: BorderSide(color: Colors.grey[300]!),
                 right: BorderSide(color: Colors.grey[300]!),
                 verticalInside: BorderSide(color: Colors.grey[300]!),
-                horizontalInside: BorderSide(color: Colors.grey, width: 1))
-            : null,
+                horizontalInside:
+                    const BorderSide(color: Colors.grey, width: 1))
+            : (getCurrentRouteOption(context) == showBordersWithZebraStripes
+                ? TableBorder.all()
+                : null),
         dividerThickness:
             1, // this one will be ignored if [border] is set above
         bottomMargin: 10,
         minWidth: 900,
         sortColumnIndex: _sortColumnIndex,
         sortAscending: _sortAscending,
+        sortArrowIcon: Icons.keyboard_arrow_up, // custom arrow
+        sortArrowAnimationDuration:
+            const Duration(milliseconds: 500), // custom animation duration
         onSelectAll: (val) =>
             setState(() => _dessertsDataSource.selectAll(val)),
         columns: [
           DataColumn2(
-            label: Text('Desert'),
+            label: const Text('Desert'),
             size: ColumnSize.S,
+            // example of fixed 1st row
+            fixedWidth:
+                getCurrentRouteOption(context) == fixedColumnWidth ? 200 : null,
             onSort: (columnIndex, ascending) =>
                 _sort<String>((d) => d.name, columnIndex, ascending),
           ),
           DataColumn2(
-            label: Text('Calories'),
+            label: const Text('Calories'),
             size: ColumnSize.S,
             numeric: true,
             onSort: (columnIndex, ascending) =>
                 _sort<num>((d) => d.calories, columnIndex, ascending),
           ),
           DataColumn2(
-            label: Text('Fat (gm)'),
+            label: const Text('Fat (gm)'),
             size: ColumnSize.S,
             numeric: true,
             onSort: (columnIndex, ascending) =>
                 _sort<num>((d) => d.fat, columnIndex, ascending),
           ),
           DataColumn2(
-            label: Text('Carbs (gm)'),
+            label: const Text('Carbs (gm)'),
             size: ColumnSize.S,
             numeric: true,
             onSort: (columnIndex, ascending) =>
                 _sort<num>((d) => d.carbs, columnIndex, ascending),
           ),
           DataColumn2(
-            label: Text('Protein (gm)'),
+            label: const Text('Protein (gm)'),
             size: ColumnSize.S,
             numeric: true,
             onSort: (columnIndex, ascending) =>
                 _sort<num>((d) => d.protein, columnIndex, ascending),
           ),
           DataColumn2(
-            label: Text('Sodium (mg)'),
+            label: const Text('Sodium (mg)'),
             size: ColumnSize.S,
             numeric: true,
             onSort: (columnIndex, ascending) =>
                 _sort<num>((d) => d.sodium, columnIndex, ascending),
           ),
           DataColumn2(
-            label: Text('Calcium (%)'),
+            label: const Text('Calcium (%)'),
             size: ColumnSize.S,
             numeric: true,
             onSort: (columnIndex, ascending) =>
                 _sort<num>((d) => d.calcium, columnIndex, ascending),
           ),
           DataColumn2(
-            label: Text('Iron (%)'),
+            label: const Text('Iron (%)'),
             size: ColumnSize.S,
             numeric: true,
             onSort: (columnIndex, ascending) =>
@@ -146,9 +156,9 @@ class _DataTable2DemoState extends State<DataTable2Demo> {
         ],
         empty: Center(
             child: Container(
-                padding: EdgeInsets.all(20),
+                padding: const EdgeInsets.all(20),
                 color: Colors.grey[200],
-                child: Text('No data'))),
+                child: const Text('No data'))),
         rows: getCurrentRouteOption(context) == noData
             ? []
             : List<DataRow>.generate(_dessertsDataSource.rowCount,

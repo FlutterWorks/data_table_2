@@ -1,9 +1,14 @@
+// ignore_for_file: avoid_print
+
 @TestOn('!chrome')
 
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'test_utils.dart';
+import 'dart:async';
+import 'dart:math' as math;
+import 'package:vector_math/vector_math_64.dart' show Matrix3;
 
 void main() {
   group('DataTable2', () {
@@ -53,10 +58,10 @@ void main() {
 
     testWidgets('minWidth is respected', (WidgetTester tester) async {
       await wrapWidgetSetSurf(tester, buildTable(minWidth: 350));
-      await tester.binding.setSurfaceSize(Size(250, 500));
+      await tester.binding.setSurfaceSize(const Size(250, 500));
       await tester.pumpAndSettle();
 
-      var s1 = tester.getSize(find.byType(Column).last);
+      var s1 = tester.getSize(find.byType(Table).last);
       print('${s1.width} ${s1.height} ');
 
       expect(s1.width > 349 && s1.width < 351, true);
@@ -76,10 +81,221 @@ void main() {
     testWidgets('empty widget is displayed when there\'s no data',
         (WidgetTester tester) async {
       await wrapWidgetSetSurf(
-          tester, buildTable(empty: Text('No data'), noData: true));
+          tester, buildTable(empty: const Text('No data'), rows: []));
 
       expect(find.text('Name'), findsOneWidget);
       expect(find.text('No data'), findsOneWidget);
+    });
+
+    testWidgets('border in heading is displayed when there\'s no data',
+        (WidgetTester tester) async {
+      await wrapWidgetSetSurf(
+          tester,
+          buildTable(
+            empty: const Text('No data'),
+            rows: [],
+            border: TableBorder.all(color: Colors.red),
+          ));
+
+      expect(find.text('Name'), findsOneWidget);
+      expect(find.text('No data'), findsOneWidget);
+
+      var tableBorder =
+          (find.byType(Table).evaluate().first.widget as Table).border!;
+      expect(tableBorder.top.color, Colors.red);
+      expect(tableBorder.top.width, 1);
+      expect(tableBorder.bottom.color, Colors.red);
+      expect(tableBorder.bottom.width, 1);
+      expect(tableBorder.left.color, Colors.red);
+      expect(tableBorder.left.width, 1);
+      expect(tableBorder.right.color, Colors.red);
+      expect(tableBorder.right.width, 1);
+
+      await wrapWidgetSetSurf(
+          tester,
+          buildTable(
+            rows: [],
+            border: TableBorder.all(color: Colors.red),
+          ));
+
+      expect(find.text('Name'), findsOneWidget);
+      expect(find.text('No data'), findsNothing);
+
+      tableBorder =
+          (find.byType(Table).evaluate().first.widget as Table).border!;
+      expect(tableBorder.top.color, Colors.red);
+      expect(tableBorder.top.width, 1);
+      expect(tableBorder.bottom.color, Colors.red);
+      expect(tableBorder.bottom.width, 1);
+      expect(tableBorder.left.color, Colors.red);
+      expect(tableBorder.left.width, 1);
+      expect(tableBorder.right.color, Colors.red);
+      expect(tableBorder.right.width, 1);
+    });
+
+    testWidgets('DataTable2.border', (WidgetTester tester) async {
+      const columns = <DataColumn>[
+        DataColumn2(label: Text('col1')),
+        DataColumn(label: Text('col2')),
+      ];
+
+      const cells = <DataCell>[
+        DataCell(Text('cell1')),
+        DataCell(Text('cell2')),
+      ];
+
+      const rows = <DataRow>[
+        DataRow2(cells: cells),
+        DataRow(cells: cells),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Material(
+            child: DataTable2(
+              border: TableBorder.all(color: Colors.red),
+              columns: columns,
+              rows: rows,
+            ),
+          ),
+        ),
+      );
+
+      var i = 0;
+      for (var t in find.byType(Table).evaluate()) {
+        expect(true, i < 2, reason: '2 tables expected, found more');
+        var table = t.widget as Table;
+        // two tables, 1st is header, 2nd is data cells
+        var tableBorder = table.border!;
+        if (i == 0) {
+          // header
+          expect(tableBorder.top.color, Colors.red);
+          expect(tableBorder.top.width, 1);
+        } else {
+          // data cells
+          expect(tableBorder.top, BorderSide.none);
+        }
+        expect(tableBorder.bottom.color, Colors.red);
+        expect(tableBorder.bottom.width, 1);
+        expect(tableBorder.left.color, Colors.red);
+        expect(tableBorder.left.width, 1);
+        expect(tableBorder.right.color, Colors.red);
+        expect(tableBorder.right.width, 1);
+
+        i++;
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Material(
+            child: DataTable2(
+              columns: columns,
+              rows: rows,
+            ),
+          ),
+        ),
+      );
+
+      i = 0;
+      for (var t in find.byType(Table).evaluate()) {
+        expect(true, i < 2, reason: '2 tables expected, found more');
+        var table = t.widget as Table;
+        // two tables, 1st is header, 2nd is data cells
+        expect(table.border, null);
+        i++;
+      }
+    });
+
+    testWidgets(
+        'Custom sortArrowIcon and sortArrowAnimationDuration parameters',
+        (WidgetTester tester) async {
+      IconData iconForTest = Icons.keyboard_arrow_up;
+      var sortAscendingGlobal = true;
+      var currentColumnIndex = 0;
+      var trigger = StreamController();
+
+      // using 'columns' here for the fake async trigger
+      final triggerColumns = <DataColumn2>[
+        DataColumn2(
+            label: const Text('Name'),
+            tooltip: 'Name',
+            onSort: (int columnIndex, bool ascending) {
+              sortAscendingGlobal = !sortAscendingGlobal;
+              currentColumnIndex = columnIndex;
+
+              trigger.add(null);
+              // print(
+              //     'onSort() --> [column: $columnIndex, ascending: $ascending], sortAscendingGlobal: $sortAscendingGlobal');
+            }),
+        const DataColumn2(
+          label: Text('Calories'),
+          tooltip: 'Calories',
+          numeric: true,
+          //onSort: (int columnIndex, bool ascending) {},
+        ),
+        const DataColumn2(
+          label: Text('Carbs'),
+          tooltip: 'Carbs',
+          numeric: true,
+          //onSort: (int columnIndex, bool ascending) {},
+        ),
+      ];
+
+      Widget getStatefulWidget(
+          {IconData? sortArrowIcon, Duration? sortArrowAnimationDuration}) {
+        return StreamBuilder(
+            stream: trigger.stream,
+            builder: (c, s) {
+              return MaterialApp(
+                home: Material(
+                  child: buildTable(
+                      sortAscending: sortAscendingGlobal,
+                      sortArrowIcon: sortArrowIcon,
+                      sortArrowAnimationDuration: sortArrowAnimationDuration,
+                      sortColumnIndex: currentColumnIndex,
+                      columns: triggerColumns),
+                ),
+              );
+            });
+      }
+
+      await tester.pumpWidget(getStatefulWidget(
+        sortArrowIcon: iconForTest,
+        sortArrowAnimationDuration: const Duration(milliseconds: 100),
+      ));
+
+      expect(find.byIcon(iconForTest), findsOneWidget);
+
+      // initial rotation before toggle
+      Transform transformOfArrow = tester.widget<Transform>(
+        find.widgetWithIcon(Transform, iconForTest).first,
+      );
+      expect(
+          transformOfArrow.transform.getRotation(), equals(Matrix3.identity()));
+
+      // tap column header to toggle sort to descending...
+      await tester.tap(find.text('Name'));
+      await tester.pump(const Duration(milliseconds: 95));
+
+      // rotation before sortArrowAnimationDuration
+      transformOfArrow = tester.widget<Transform>(
+        find.widgetWithIcon(Transform, iconForTest).first,
+      );
+      print(
+          'before sortArrowAnimationDuration: \n${transformOfArrow.transform.getRotation()}');
+      expect(transformOfArrow.transform.getRotation(),
+          isNot(Matrix3.rotationZ(math.pi)));
+
+      await tester.pump(const Duration(milliseconds: 105));
+
+      // rotation after sortArrowAnimationDuration
+      transformOfArrow = tester.widget<Transform>(
+        find.widgetWithIcon(Transform, iconForTest).first,
+      );
+      expect(transformOfArrow.transform.getRotation(),
+          equals(Matrix3.rotationZ(math.pi)));
+      print(
+          'after sortArrowAnimationDuration: \n${transformOfArrow.transform.getRotation()}');
     });
   });
 
@@ -161,7 +377,7 @@ void main() {
               },
               autoRowsToHeight: true));
       const height = 300.0;
-      await tester.binding.setSurfaceSize(Size(1000, height));
+      await tester.binding.setSurfaceSize(const Size(1000, height));
       await tester.pumpAndSettle();
 
       var s1 = tester.getSize(find.byType(PaginatedDataTable2).first);
@@ -174,7 +390,7 @@ void main() {
       expect(find.byType(Checkbox), findsNWidgets(n));
       expect(rowsPp, n - 1);
 
-      await tester.binding.setSurfaceSize(Size(1000, height * 2));
+      await tester.binding.setSurfaceSize(const Size(1000, height * 2));
       await tester.pumpAndSettle();
       s1 = tester.getSize(find.byType(PaginatedDataTable2).first);
       print('${s1.width} ${s1.height} ');
@@ -196,7 +412,7 @@ void main() {
               autoRowsToHeight: true));
 
       const height = 300.0;
-      await tester.binding.setSurfaceSize(Size(1000, height));
+      await tester.binding.setSurfaceSize(const Size(1000, height));
       await tester.pumpAndSettle();
 
       var s1 = tester.getSize(find.byType(PaginatedDataTable2).first);
@@ -207,7 +423,7 @@ void main() {
       // - header - header row - footer
       // +1 - checkbox in header
 
-      await tester.binding.setSurfaceSize(Size(1000, height * 2));
+      await tester.binding.setSurfaceSize(const Size(1000, height * 2));
       await tester.pumpAndSettle();
       s1 = tester.getSize(find.byType(PaginatedDataTable2).first);
       print('${s1.width} ${s1.height} ');
@@ -228,7 +444,7 @@ void main() {
               autoRowsToHeight: true));
 
       const height = 300.0;
-      await tester.binding.setSurfaceSize(Size(1000, height));
+      await tester.binding.setSurfaceSize(const Size(1000, height));
 
       var s1 = tester.getSize(find.byType(PaginatedDataTable2).first);
       print('${s1.width} ${s1.height} ');
@@ -239,7 +455,7 @@ void main() {
       // - header - header row - footer
       // +1 - checkbox in header
 
-      await tester.binding.setSurfaceSize(Size(1000, height * 2));
+      await tester.binding.setSurfaceSize(const Size(1000, height * 2));
       await tester.pumpAndSettle();
       s1 = tester.getSize(find.byType(PaginatedDataTable2).first);
       print('${s1.width} ${s1.height} ');
@@ -250,7 +466,7 @@ void main() {
 
     testWidgets('autoRowsToHeight doesn\'t allow setting page size',
         (WidgetTester tester) async {
-      await tester.binding.setSurfaceSize(Size(1000, 300));
+      await tester.binding.setSurfaceSize(const Size(1000, 300));
       await tester.pumpWidget(MaterialApp(
         home: Material(
             child: buildPaginatedTable(
@@ -269,10 +485,10 @@ void main() {
           buildPaginatedTable(
               showPage: false, showGeneration: false, minWidth: 350));
 
-      await tester.binding.setSurfaceSize(Size(200, 300));
+      await tester.binding.setSurfaceSize(const Size(200, 300));
       await tester.pumpAndSettle();
 
-      var s1 = tester.getSize(find.byType(Column).last);
+      var s1 = tester.getSize(find.byType(Table).last);
       print('${s1.width} ${s1.height} ');
 
       expect(s1.width > 349 && s1.width < 351, true);
@@ -294,15 +510,53 @@ void main() {
 
     testWidgets('empty widget is displayed when there\'s no data',
         (WidgetTester tester) async {
-      await wrapWidgetSetSurf(
-          tester, buildPaginatedTable(empty: Text('No data'), noData: true));
+      await wrapWidgetSetSurf(tester,
+          buildPaginatedTable(empty: const Text('No data'), noData: true));
 
       expect(find.text('Name'), findsOneWidget);
       expect(find.text('No data'), findsOneWidget);
     });
 
+    testWidgets('headingRowColor is applied', (WidgetTester tester) async {
+      await wrapWidgetSetSurf(
+          tester,
+          buildPaginatedTable(
+              headingRowColor: MaterialStateProperty.all(Colors.yellow)));
+
+      var t = tester.widget(find.byType(DataTable2)) as DataTable2;
+      expect(
+          t.headingRowColor!.resolve({MaterialState.focused}), Colors.yellow);
+
+      await wrapWidgetSetSurf(tester, buildPaginatedTable());
+
+      t = tester.widget(find.byType(DataTable2)) as DataTable2;
+      expect(t.headingRowColor, null);
+    });
+
+    testWidgets('"FlexFit fit" is applied', (WidgetTester tester) async {
+      await wrapWidgetSetSurf(tester, buildPaginatedTable());
+
+      var t = tester.widget(find
+          .descendant(
+              of: find.byType(PaginatedDataTable2),
+              matching: find.byType(Flexible))
+          .first) as Flexible;
+
+      expect(t.fit, FlexFit.tight);
+
+      await wrapWidgetSetSurf(tester, buildPaginatedTable(fit: FlexFit.loose));
+
+      t = tester.widget(find
+          .descendant(
+              of: find.byType(PaginatedDataTable2),
+              matching: find.byType(Flexible))
+          .first) as Flexible;
+
+      expect(t.fit, FlexFit.loose);
+    });
+
     testWidgets('hidePaginator hides paginator', (WidgetTester tester) async {
-      await tester.binding.setSurfaceSize(Size(1000, 300));
+      await tester.binding.setSurfaceSize(const Size(1000, 300));
       await tester.pumpWidget(MaterialApp(
           home: Material(
               child: buildPaginatedTable(
@@ -315,7 +569,7 @@ void main() {
     });
 
     testWidgets('PaginatorController works', (WidgetTester tester) async {
-      await tester.binding.setSurfaceSize(Size(1000, 300));
+      await tester.binding.setSurfaceSize(const Size(1000, 300));
       var controller = PaginatorController();
       await tester.pumpWidget(MaterialApp(
           home: Material(
@@ -377,7 +631,8 @@ void main() {
       expect(controller.rowCount, 500);
     });
 
-    testWidgets('DataTable2 initial sort indicator orientation not spoiled',
+    testWidgets(
+        'PaginatedDataTable2 initial sort indicator orientation not spoiled',
         (WidgetTester tester) async {
       // Check for ascending list
       await tester.pumpWidget(MaterialApp(
@@ -438,6 +693,140 @@ void main() {
       //  [0] [-1.0,-1.2246467991473532e-16,0.0]
       // [1] [1.2246467991473532e-16,-1.0,0.0]
       // [2] [0.0,0.0,1.0]
+    });
+
+    testWidgets('PaginatedDataTable2.border', (WidgetTester tester) async {
+      await tester.pumpWidget(MaterialApp(
+          home: Material(
+              child: buildPaginatedTable(
+                  border: TableBorder.all(color: Colors.red)))));
+
+      var i = 0;
+      for (var t in find.byType(Table).evaluate()) {
+        expect(true, i < 2, reason: '2 tables expected, found more');
+        var table = t.widget as Table;
+        // two tables, 1st is header, 2nd is data cells
+        var tableBorder = table.border!;
+        if (i == 0) {
+          // header
+          expect(tableBorder.top.color, Colors.red);
+          expect(tableBorder.top.width, 1);
+        } else {
+          // data cells
+          expect(tableBorder.top, BorderSide.none);
+        }
+        expect(tableBorder.bottom.color, Colors.red);
+        expect(tableBorder.bottom.width, 1);
+        expect(tableBorder.left.color, Colors.red);
+        expect(tableBorder.left.width, 1);
+        expect(tableBorder.right.color, Colors.red);
+        expect(tableBorder.right.width, 1);
+
+        i++;
+      }
+
+      await tester.pumpWidget(
+          MaterialApp(home: Material(child: buildPaginatedTable())));
+
+      i = 0;
+      for (var t in find.byType(Table).evaluate()) {
+        expect(true, i < 2, reason: '2 tables expected, found more');
+        var table = t.widget as Table;
+        // two tables, 1st is header, 2nd is data cells
+        expect(table.border, null);
+        i++;
+      }
+    });
+
+    testWidgets('Custom sortArrowIcon test for PaginatedDataTable2',
+        (WidgetTester tester) async {
+      IconData iconForTest = Icons.keyboard_arrow_up;
+      var sortAscendingGlobal = true;
+      var currentColumnIndex = 0;
+      var trigger = StreamController();
+
+      // using 'columns' here for the fake async trigger
+      final triggerColumns = <DataColumn2>[
+        DataColumn2(
+            label: const Text('Name'),
+            tooltip: 'Name',
+            onSort: (int columnIndex, bool ascending) {
+              sortAscendingGlobal = !sortAscendingGlobal;
+              currentColumnIndex = columnIndex;
+
+              trigger.add(null);
+              // print(
+              //     'onSort() --> [column: $columnIndex, ascending: $ascending], sortAscendingGlobal: $sortAscendingGlobal');
+            }),
+        const DataColumn2(
+          label: Text('Calories'),
+          tooltip: 'Calories',
+          numeric: true,
+          //onSort: (int columnIndex, bool ascending) {},
+        ),
+        const DataColumn2(
+          label: Text('Carbs'),
+          tooltip: 'Carbs',
+          numeric: true,
+          //onSort: (int columnIndex, bool ascending) {},
+        ),
+      ];
+
+      Widget getStatefulWidget(
+          {IconData? sortArrowIcon, Duration? sortArrowAnimationDuration}) {
+        return StreamBuilder(
+            stream: trigger.stream,
+            builder: (c, s) {
+              return MaterialApp(
+                home: Material(
+                  child: buildPaginatedTable(
+                      sortAscending: sortAscendingGlobal,
+                      sortArrowIcon: sortArrowIcon,
+                      sortArrowAnimationDuration: sortArrowAnimationDuration,
+                      sortColumnIndex: currentColumnIndex,
+                      columns: triggerColumns),
+                ),
+              );
+            });
+      }
+
+      await tester.pumpWidget(getStatefulWidget(
+        sortArrowIcon: iconForTest,
+        sortArrowAnimationDuration: const Duration(milliseconds: 100),
+      ));
+
+      expect(find.byIcon(iconForTest), findsOneWidget);
+
+      // initial rotation before toggle
+      Transform transformOfArrow = tester.widget<Transform>(
+        find.widgetWithIcon(Transform, iconForTest).first,
+      );
+      expect(
+          transformOfArrow.transform.getRotation(), equals(Matrix3.identity()));
+
+      // tap column header to toggle sort to descending...
+      await tester.tap(find.text('Name'));
+      await tester.pump(const Duration(milliseconds: 95));
+
+      // rotation before sortArrowAnimationDuration
+      transformOfArrow = tester.widget<Transform>(
+        find.widgetWithIcon(Transform, iconForTest).first,
+      );
+      print(
+          'before sortArrowAnimationDuration: \n${transformOfArrow.transform.getRotation()}');
+      expect(transformOfArrow.transform.getRotation(),
+          isNot(Matrix3.rotationZ(math.pi)));
+
+      await tester.pump(const Duration(milliseconds: 105));
+
+      // rotation after sortArrowAnimationDuration
+      transformOfArrow = tester.widget<Transform>(
+        find.widgetWithIcon(Transform, iconForTest).first,
+      );
+      expect(transformOfArrow.transform.getRotation(),
+          equals(Matrix3.rotationZ(math.pi)));
+      print(
+          'after sortArrowAnimationDuration: \n${transformOfArrow.transform.getRotation()}');
     });
   });
 
@@ -519,7 +908,7 @@ void main() {
               },
               autoRowsToHeight: true));
       const height = 300.0;
-      await tester.binding.setSurfaceSize(Size(1000, height));
+      await tester.binding.setSurfaceSize(const Size(1000, height));
       await tester.pumpAndSettle();
 
       var s1 = tester.getSize(find.byType(AsyncPaginatedDataTable2).first);
@@ -532,7 +921,7 @@ void main() {
       expect(find.byType(Checkbox), findsNWidgets(n));
       expect(rowsPp, n - 1);
 
-      await tester.binding.setSurfaceSize(Size(1000, height * 2));
+      await tester.binding.setSurfaceSize(const Size(1000, height * 2));
       await tester.pumpAndSettle();
       s1 = tester.getSize(find.byType(AsyncPaginatedDataTable2).first);
       print('${s1.width} ${s1.height} ');
@@ -554,7 +943,7 @@ void main() {
               autoRowsToHeight: true));
 
       const height = 300.0;
-      await tester.binding.setSurfaceSize(Size(1000, height));
+      await tester.binding.setSurfaceSize(const Size(1000, height));
       await tester.pumpAndSettle();
 
       var s1 = tester.getSize(find.byType(AsyncPaginatedDataTable2).first);
@@ -565,7 +954,7 @@ void main() {
       // - header - header row - footer
       // +1 - checkbox in header
 
-      await tester.binding.setSurfaceSize(Size(1000, height * 2));
+      await tester.binding.setSurfaceSize(const Size(1000, height * 2));
       await tester.pumpAndSettle();
       s1 = tester.getSize(find.byType(AsyncPaginatedDataTable2).first);
       print('${s1.width} ${s1.height} ');
@@ -586,7 +975,7 @@ void main() {
               autoRowsToHeight: true));
 
       const height = 300.0;
-      await tester.binding.setSurfaceSize(Size(1000, height));
+      await tester.binding.setSurfaceSize(const Size(1000, height));
 
       var s1 = tester.getSize(find.byType(AsyncPaginatedDataTable2).first);
       print('${s1.width} ${s1.height} ');
@@ -597,7 +986,7 @@ void main() {
       // - header - header row - footer
       // +1 - checkbox in header
 
-      await tester.binding.setSurfaceSize(Size(1000, height * 2));
+      await tester.binding.setSurfaceSize(const Size(1000, height * 2));
       await tester.pumpAndSettle();
       s1 = tester.getSize(find.byType(AsyncPaginatedDataTable2).first);
       print('${s1.width} ${s1.height} ');
@@ -608,7 +997,7 @@ void main() {
 
     testWidgets('autoRowsToHeight doesn\'t allow setting page size',
         (WidgetTester tester) async {
-      await tester.binding.setSurfaceSize(Size(1000, 300));
+      await tester.binding.setSurfaceSize(const Size(1000, 300));
       await tester.pumpWidget(MaterialApp(
         home: Material(
             child: buildAsyncPaginatedTable(
@@ -629,10 +1018,11 @@ void main() {
           buildAsyncPaginatedTable(
               showPage: false, showGeneration: false, minWidth: 350));
 
-      await tester.binding.setSurfaceSize(Size(200, 300));
+      await tester.pumpAndSettle();
+      await tester.binding.setSurfaceSize(const Size(200, 300));
       await tester.pumpAndSettle();
 
-      var s1 = tester.getSize(find.byType(Column).last);
+      var s1 = tester.getSize(find.byType(Table).last);
       print('${s1.width} ${s1.height} ');
 
       expect(s1.width > 349 && s1.width < 351, true);
@@ -657,7 +1047,7 @@ void main() {
     testWidgets('empty widget is displayed when there\'s no data',
         (WidgetTester tester) async {
       await wrapWidgetSetSurf(tester,
-          buildAsyncPaginatedTable(empty: Text('No data'), noData: true));
+          buildAsyncPaginatedTable(empty: const Text('No data'), noData: true));
 
       await tester.pumpAndSettle();
 
@@ -666,7 +1056,7 @@ void main() {
     });
 
     testWidgets('hidePaginator hides paginator', (WidgetTester tester) async {
-      await tester.binding.setSurfaceSize(Size(1000, 300));
+      await tester.binding.setSurfaceSize(const Size(1000, 300));
       await tester.pumpWidget(MaterialApp(
           home: Material(
               child: buildAsyncPaginatedTable(
@@ -681,7 +1071,7 @@ void main() {
     });
 
     testWidgets('PaginatorController works', (WidgetTester tester) async {
-      await tester.binding.setSurfaceSize(Size(1000, 300));
+      await tester.binding.setSurfaceSize(const Size(1000, 300));
       var controller = PaginatorController();
       await tester.pumpWidget(MaterialApp(
           home: Material(
@@ -813,9 +1203,101 @@ void main() {
       // [1] [1.2246467991473532e-16,-1.0,0.0]
       // [2] [0.0,0.0,1.0]
     });
+
+    testWidgets(
+        'Custom sortArrowIcon and sortArrowAnimationDuration parameters',
+        (WidgetTester tester) async {
+      IconData iconForTest = Icons.keyboard_arrow_up;
+      var sortAscendingGlobal = true;
+      var currentColumnIndex = 0;
+      var trigger = StreamController();
+
+      // using 'columns' here for the fake async trigger
+      final triggerColumns = <DataColumn2>[
+        DataColumn2(
+            label: const Text('Name'),
+            tooltip: 'Name',
+            onSort: (int columnIndex, bool ascending) {
+              sortAscendingGlobal = !sortAscendingGlobal;
+              currentColumnIndex = columnIndex;
+
+              trigger.add(null);
+            }),
+        const DataColumn2(
+          label: Text('Calories'),
+          tooltip: 'Calories',
+          numeric: true,
+        ),
+        const DataColumn2(
+          label: Text('Carbs'),
+          tooltip: 'Carbs',
+          numeric: true,
+        ),
+      ];
+
+      Widget getStatefulWidget(
+          {IconData? sortArrowIcon, Duration? sortArrowAnimationDuration}) {
+        return StreamBuilder(
+            stream: trigger.stream,
+            builder: (c, s) {
+              return MaterialApp(
+                home: Material(
+                  child: buildAsyncPaginatedTable(
+                      sortAscending: sortAscendingGlobal,
+                      sortArrowIcon: sortArrowIcon,
+                      sortArrowAnimationDuration: sortArrowAnimationDuration,
+                      sortColumnIndex: currentColumnIndex,
+                      columns: triggerColumns),
+                ),
+              );
+            });
+      }
+
+      await tester.pumpWidget(getStatefulWidget(
+        sortArrowIcon: iconForTest,
+        sortArrowAnimationDuration: const Duration(milliseconds: 100),
+      ));
+
+      expect(find.byIcon(iconForTest), findsOneWidget);
+
+      // initial rotation before toggle
+      Transform transformOfArrow = tester.widget<Transform>(
+        find.widgetWithIcon(Transform, iconForTest).first,
+      );
+      //print('before tap: \n${transformOfArrow.transform.getRotation()}');
+      expect(
+          transformOfArrow.transform.getRotation(), equals(Matrix3.identity()));
+
+      // tap column header to toggle sort to descending...
+      await tester.tap(find.text('Name'));
+      await tester.pump(const Duration(milliseconds: 95));
+
+      // rotation before sortArrowAnimationDuration
+      transformOfArrow = tester.widget<Transform>(
+        find.widgetWithIcon(Transform, iconForTest).first,
+      );
+      print(
+          'before sortArrowAnimationDuration: \n${transformOfArrow.transform.getRotation()}');
+      expect(transformOfArrow.transform.getRotation(),
+          isNot(Matrix3.rotationZ(math.pi)));
+
+      await tester.pump(const Duration(milliseconds: 105));
+
+      // rotation after sortArrowAnimationDuration
+      transformOfArrow = tester.widget<Transform>(
+        find.widgetWithIcon(Transform, iconForTest).first,
+      );
+      expect(transformOfArrow.transform.getRotation(),
+          equals(Matrix3.rotationZ(math.pi)));
+      print(
+          'after sortArrowAnimationDuration: \n${transformOfArrow.transform.getRotation()}');
+
+      tester.pumpAndSettle();
+    });
+
     testWidgets('Default loading spinner is shown',
         (WidgetTester tester) async {
-      await tester.binding.setSurfaceSize(Size(1000, 300));
+      await tester.binding.setSurfaceSize(const Size(1000, 300));
       await tester.pumpWidget(MaterialApp(
           home: Material(
               child: buildAsyncPaginatedTable(
@@ -824,7 +1306,7 @@ void main() {
                   showPageSizeSelector: true,
                   hidePaginator: true))));
 
-      await tester.pump(Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
 
@@ -834,7 +1316,7 @@ void main() {
     });
 
     testWidgets('Custom loading spinner is shown', (WidgetTester tester) async {
-      await tester.binding.setSurfaceSize(Size(1000, 300));
+      await tester.binding.setSurfaceSize(const Size(1000, 300));
       await tester.pumpWidget(MaterialApp(
           home: Material(
               child: buildAsyncPaginatedTable(
@@ -844,7 +1326,7 @@ void main() {
                   circularSpinner: true,
                   hidePaginator: true))));
 
-      await tester.pump(Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
@@ -855,7 +1337,7 @@ void main() {
 
     testWidgets('Switching page shows loading spinner',
         (WidgetTester tester) async {
-      await tester.binding.setSurfaceSize(Size(1000, 300));
+      await tester.binding.setSurfaceSize(const Size(1000, 300));
       await tester.pumpWidget(MaterialApp(
           home: Material(
               child: buildAsyncPaginatedTable(
@@ -867,7 +1349,7 @@ void main() {
       expect(find.byType(LinearProgressIndicator), findsNothing);
 
       await tester.tap(find.byIcon(Icons.chevron_right));
-      await tester.pump(Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
 
@@ -876,11 +1358,11 @@ void main() {
     });
 
     testWidgets('Error widget is displayed', (WidgetTester tester) async {
-      await tester.binding.setSurfaceSize(Size(1000, 300));
+      await tester.binding.setSurfaceSize(const Size(1000, 300));
       await tester.pumpWidget(MaterialApp(
           home: Material(child: buildAsyncPaginatedTable(throwError: true))));
 
-      await tester.pump(Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
 
@@ -895,7 +1377,7 @@ void main() {
     });
 
     testWidgets('Not empty table loaded', (WidgetTester tester) async {
-      await tester.binding.setSurfaceSize(Size(1000, 300));
+      await tester.binding.setSurfaceSize(const Size(1000, 300));
       await tester.pumpWidget(MaterialApp(
           home: Material(
               child: buildAsyncPaginatedTable(
@@ -923,10 +1405,101 @@ void main() {
       expect(find.text('Frozen yogurt x2'), findsOneWidget);
       expect(find.text('11–20 of 30'), findsOneWidget);
     });
+
+    testWidgets('Select/deselect all', (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(1000, 300));
+      var source = DessertDataSourceAsync(allowSelection: true);
+      await tester.pumpWidget(MaterialApp(
+          home: Material(
+              child: buildAsyncPaginatedTable(
+                  showPage: false,
+                  showGeneration: false,
+                  showPageSizeSelector: true,
+                  source: source,
+                  onSelectAll: (val) {
+                    if (val ?? false) {
+                      source.selectAll();
+                    } else {
+                      source.deselectAll();
+                    }
+                  }))));
+
+      await tester.pumpAndSettle();
+
+      int numebrOfCheckboxes(bool cheked) => find
+          .byType(Checkbox)
+          .evaluate()
+          .where((e) => (e.widget as Checkbox).value == cheked)
+          .length;
+
+      expect(numebrOfCheckboxes(false), 11);
+
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pumpAndSettle();
+      expect(numebrOfCheckboxes(true), 11);
+
+      await tester.tap(find.byIcon(Icons.chevron_right)); // page 2
+      await tester.pumpAndSettle();
+      expect(numebrOfCheckboxes(true), 11);
+      await tester.tap(find.byIcon(Icons.chevron_right)); // page 3
+      await tester.pumpAndSettle();
+      expect(numebrOfCheckboxes(true), 11);
+
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pumpAndSettle();
+      expect(numebrOfCheckboxes(false), 11);
+    });
+
+    testWidgets('Select/deselect all on page', (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(1000, 300));
+      var source = DessertDataSourceAsync(allowSelection: true);
+      await tester.pumpWidget(MaterialApp(
+          home: Material(
+              child: buildAsyncPaginatedTable(
+                  showPage: false,
+                  showGeneration: false,
+                  showPageSizeSelector: true,
+                  source: source,
+                  onSelectAll: (val) {
+                    if (val!) {
+                      source.selectAllOnThePage();
+                    } else {
+                      source.deselectAllOnThePage();
+                    }
+                  }))));
+
+      await tester.pumpAndSettle();
+
+      int numebrOfCheckboxes(bool cheked) => find
+          .byType(Checkbox)
+          .evaluate()
+          .where((e) => (e.widget as Checkbox).value == cheked)
+          .length;
+
+      expect(numebrOfCheckboxes(false), 11);
+
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pumpAndSettle();
+      expect(numebrOfCheckboxes(true), 11);
+
+      await tester.tap(find.byIcon(Icons.chevron_right)); // page 2
+      await tester.pumpAndSettle();
+      expect(numebrOfCheckboxes(false), 11);
+      await tester.tap(find.byIcon(Icons.chevron_right)); // page 3
+      await tester.pumpAndSettle();
+      expect(numebrOfCheckboxes(false), 11);
+
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pumpAndSettle();
+      expect(numebrOfCheckboxes(true), 11);
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pumpAndSettle();
+      expect(numebrOfCheckboxes(false), 11);
+    });
   });
 
   testWidgets('PageSyncApproach.doNothing', (WidgetTester tester) async {
-    await tester.binding.setSurfaceSize(Size(1000, 300));
+    await tester.binding.setSurfaceSize(const Size(1000, 300));
     await tester.pumpWidget(MaterialApp(
         home: Material(
             child: buildAsyncPaginatedTable(
@@ -957,7 +1530,7 @@ void main() {
 
   testWidgets('Page switch and PageSyncApproach.goToFirst',
       (WidgetTester tester) async {
-    await tester.binding.setSurfaceSize(Size(1000, 300));
+    await tester.binding.setSurfaceSize(const Size(1000, 300));
     await tester.pumpWidget(MaterialApp(
         home: Material(
             child: buildAsyncPaginatedTable(
@@ -992,7 +1565,7 @@ void main() {
 
   testWidgets('Page switch and PageSyncApproach.goToLast',
       (WidgetTester tester) async {
-    await tester.binding.setSurfaceSize(Size(1000, 300));
+    await tester.binding.setSurfaceSize(const Size(1000, 300));
     await tester.pumpWidget(MaterialApp(
         home: Material(
             child: buildAsyncPaginatedTable(
@@ -1029,7 +1602,7 @@ void main() {
   testWidgets('Page size and PageSyncApproach.goToFirst',
       (WidgetTester tester) async {
     var controller = PaginatorController();
-    await tester.binding.setSurfaceSize(Size(1000, 300));
+    await tester.binding.setSurfaceSize(const Size(1000, 300));
     await tester.pumpWidget(MaterialApp(
         home: Material(
             child: buildAsyncPaginatedTable(
@@ -1068,7 +1641,7 @@ void main() {
   testWidgets('Page size and PageSyncApproach.goToLast',
       (WidgetTester tester) async {
     var controller = PaginatorController();
-    await tester.binding.setSurfaceSize(Size(1000, 300));
+    await tester.binding.setSurfaceSize(const Size(1000, 300));
     await tester.pumpWidget(MaterialApp(
         home: Material(
             child: buildAsyncPaginatedTable(
