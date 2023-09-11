@@ -413,7 +413,7 @@ void main() {
 
     // Tap on an empty space near checkbox
     var xy = tester.getCenter(find.ancestor(
-        of: find.byType(Checkbox).at(1), matching: find.byType(Center)));
+        of: find.byType(Checkbox).at(1), matching: find.byType(Align)));
 
     await tester.tapAt(Offset(xy.dx - 10, xy.dy - 20));
     await tester.pump(const Duration(milliseconds: 300));
@@ -2150,7 +2150,7 @@ void main() {
     await tester
         .pump(const Duration(milliseconds: 200)); // splash is well underway
     final RenderBox box =
-        Material.of(tester.element(find.byType(InkWell)))! as RenderBox;
+        Material.of(tester.element(find.byType(InkWell))) as RenderBox;
     expect(box, paints..circle(x: 68.0, y: 24.0, color: pressedColor));
     await gesture.up();
   });
@@ -2180,8 +2180,6 @@ void main() {
 
   testWidgets('DataTable2 renders with border and background decoration',
       (WidgetTester tester) async {
-    // const double width = 800;
-    // const double height = 600;
     const double borderHorizontal = 5.0;
     const double borderVertical = 10.0;
     const Color borderColor = Color(0xff2196f3);
@@ -2201,19 +2199,16 @@ void main() {
           columns: const <DataColumn>[
             DataColumn(label: Text('Col1')),
           ],
-          rows: const <DataRow2>[
-            DataRow2(cells: <DataCell>[DataCell(Text('1'))]),
+          rows: const <DataRow>[
+            DataRow(cells: <DataCell>[DataCell(Text('1'))]),
           ],
         ),
       ),
     ));
 
-    var t = find
-        .ancestor(of: find.byType(Table), matching: find.byType(Container))
-        .first;
-
     expect(
-      t,
+      find.ancestor(
+          of: find.byType(Table).first, matching: find.byType(Container)),
       paints
         ..rect(
           //rect: const Rect.fromLTRB(0.0, 0.0, width, height),
@@ -2221,22 +2216,16 @@ void main() {
         ),
     );
     expect(
-      t,
-      paints
-        ..path(color: borderColor)
-        ..path(color: borderColor)
-        ..path(color: borderColor)
-        ..path(color: borderColor),
+      find.ancestor(
+          of: find.byType(Table).first, matching: find.byType(Container)),
+      paints..drrect(color: borderColor),
     );
     expect(
       tester.getTopLeft(find.byType(Table).first),
       const Offset(borderVertical, borderHorizontal),
     );
-    // expect(
-    //   tester.getBottomRight(find.byType(Table).first),
-    //   const Offset(width - borderVertical, height - borderHorizontal),
-    // );
   });
+
   testWidgets('DataTable set interior border test',
       (WidgetTester tester) async {
     const List<DataColumn> columns = <DataColumn>[

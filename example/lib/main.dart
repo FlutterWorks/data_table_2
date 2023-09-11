@@ -44,7 +44,7 @@ Scaffold _getScaffold(BuildContext context, Widget body,
               dropdownColor: Colors.grey[800],
               style: Theme.of(context)
                   .textTheme
-                  .subtitle1!
+                  .titleMedium!
                   .copyWith(color: Colors.white),
               value: _getCurrentRoute(context),
               onChanged: (v) {
@@ -61,7 +61,7 @@ Scaffold _getScaffold(BuildContext context, Widget body,
                 ),
                 DropdownMenuItem(
                   value: '/datatable2scrollup',
-                  child: Text('Scroll-up'),
+                  child: Text('Scroll-up/Scroll-left'),
                 ),
                 DropdownMenuItem(
                   value: '/datatable2fixedmn',
@@ -101,7 +101,7 @@ Scaffold _getScaffold(BuildContext context, Widget body,
                             dropdownColor: Colors.grey[300],
                             style: Theme.of(context)
                                 .textTheme
-                                .subtitle1!
+                                .titleMedium!
                                 .copyWith(color: Colors.black),
                             value: defaultOption,
                             onChanged: (v) {
@@ -148,8 +148,10 @@ class MyApp extends StatelessWidget {
             _getScaffold(context, const DataTable2SimpleDemo()),
         '/datatable2scrollup': (context) =>
             _getScaffold(context, const DataTable2ScrollupDemo()),
-        '/datatable2fixedmn': (context) =>
-            _getScaffold(context, const DataTable2FixedNMDemo()),
+        '/datatable2fixedmn': (context) => _getScaffold(
+            context,
+            const DataTable2FixedNMDemo(),
+            getOptionsForRoute('/datatable2fixedmn')),
         '/paginated2': (context) => _getScaffold(context,
             const PaginatedDataTable2Demo(), getOptionsForRoute('/paginated2')),
         '/asyncpaginated2': (context) => _getScaffold(

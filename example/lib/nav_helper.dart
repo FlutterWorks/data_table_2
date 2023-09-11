@@ -23,6 +23,10 @@ const selectAllPage = 'Select all at page';
 const rowTaps = 'Row Taps';
 const rowHeightOverrides = 'Row height overrides';
 const fixedColumnWidth = 'Fixed column width';
+const dataTable2 = 'DataTable2';
+const paginatedFixedRowsCols = 'PaginatedDataTable2';
+const asyncPaginatedFixedRowsCols = 'AsyncPaginatedDataTable2';
+const custArrows = 'Custom sort arrows';
 
 /// Async sample that emulates network error and allow retrying load operation
 const asyncErrors = "Errors/Retries";
@@ -38,9 +42,15 @@ const Map<String, List<String>> routeOptions = {
     showBordersWithZebraStripes,
     fixedColumnWidth,
     rowTaps,
-    rowHeightOverrides
+    rowHeightOverrides,
+    custArrows
   ],
   '/paginated2': [dflt, noData, autoRows, custPager, defaultSorting],
+  '/datatable2fixedmn': [
+    dataTable2,
+    paginatedFixedRowsCols,
+    asyncPaginatedFixedRowsCols
+  ],
   '/asyncpaginated2': [
     dflt,
     noData,
