@@ -1,3 +1,14 @@
+## 2.5.11
+- Fixed Async example (range selector)
+
+## 2.5.10
+- Added [DataTable2.decoration]
+- Example with rows styles as rounded corners rectangles
+
+## 2.5.9
+- Fix for DataRow2 clone() inside AsyncPaginatedDataTable2 misses onDoubleTap callback (PR #237)
+- Fixed warnings and updated test to satisfy changes in Flutter 3.16.0
+
 ## 2.5.8
 - Added `headingRowDecoration` property to allow more customizations to heading row style (PR #220)
 

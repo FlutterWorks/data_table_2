@@ -5,7 +5,7 @@
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'mock_canvas.dart';
+// import 'mock_canvas.dart';
 import 'test_utils.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -390,6 +390,34 @@ void main() {
           equals(Matrix3.rotationZ(math.pi)));
       print(
           'after sortArrowAnimationDuration: \n${transformOfArrow.transform.getRotation()}');
+    });
+
+    testWidgets('DataRow2 renders with custom decoration',
+        (WidgetTester tester) async {
+      const BoxDecoration rowDecoration =
+          BoxDecoration(color: Color(0xFFFFF3E0));
+
+      await tester.pumpWidget(MaterialApp(
+        home: Material(
+          child: DataTable2(
+            columns: const <DataColumn>[
+              DataColumn(label: Text('Column1')),
+            ],
+            rows: const <DataRow2>[
+              DataRow2(
+                cells: <DataCell>[DataCell(Text('Content1'))],
+                decoration: rowDecoration,
+              ),
+            ],
+          ),
+        ),
+      ));
+
+      expect(
+          find.ancestor(
+              of: find.byType(Table).first,
+              matching: find.byType(Container).first),
+          paints..rect(color: const Color(0xFFFFF3E0)));
     });
   });
 

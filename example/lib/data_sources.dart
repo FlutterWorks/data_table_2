@@ -136,7 +136,7 @@ class DessertDataSource extends DataTableSource {
   }
 
   @override
-  DataRow getRow(int index, [Color? color]) {
+  DataRow2 getRow(int index, [Color? color]) {
     final format = NumberFormat.decimalPercentPattern(
       locale: 'en',
       decimalDigits: 0,
@@ -286,7 +286,7 @@ class DessertDataSourceAsync extends AsyncDataTableSource {
         x.data.map((dessert) {
           return DataRow(
             key: ValueKey<int>(dessert.id),
-            selected: dessert.selected,
+            //selected: dessert.selected,
             onSelectChanged: (value) {
               if (value != null) {
                 setRowSelection(ValueKey<int>(dessert.id), value);
@@ -486,7 +486,7 @@ List<Dessert> _desserts = <Dessert>[
     1,
   ),
   Dessert(
-    'Ice Cream Sandich with sugar',
+    'Ice Cream Sandwich with sugar',
     246,
     9.0,
     39,
